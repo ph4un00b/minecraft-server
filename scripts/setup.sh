@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Setup Script
-# Usage: ./setup.sh
+# Usage: ./scripts/setup.sh (or from project root)
 # 
 # Templates are in templates/ folder:
 #   - templates/server.properties.defaults -> server/server.properties
@@ -17,6 +17,11 @@
 #   /arena rebuild     - Rebuild current arena
 #   /arena sety <level> - Change arena Y level and rebuild
 
+# Change to project root if running from scripts directory
+if [ -d "../templates" ]; then
+    cd ..
+fi
+
 echo "[INFO] Setting up Colosseum Arena..."
 echo "[INFO] Templates: templates/ -> server/"
 echo "[INFO] Edit server/phau.properties for arena settings"
@@ -29,4 +34,4 @@ fi
 echo "[INFO] Setup complete!"
 echo "[INFO] Edit server/phau.properties to change arena settings"
 echo "[INFO] In-game: /arena sety <level> to change Y level"
-echo "[INFO] Run './start-server.sh' to start the server"
+echo "[INFO] Run './scripts/start-server.sh' to start the server"

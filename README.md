@@ -33,27 +33,21 @@ If Java 21 is not installed, the setup will fail with:
 ### Linux / macOS
 
 ```bash
-# Setup with simple arena
-./setup.sh simple
-
-# Setup with detailed gothic arena (default)
-./setup.sh detailed
+# Setup (edit templates/phau.properties first to choose arena type)
+./scripts/setup.sh
 
 # Start the server
-./run.sh
+./scripts/start-server.sh
 ```
 
 ### Windows
 
 ```cmd
-REM Setup with simple arena
-setup.bat simple
-
-REM Setup with detailed gothic arena (default)
-setup.bat detailed
+REM Setup (edit templates\phau.properties first to choose arena type)
+scripts\setup.bat
 
 REM Start the server
-run.bat
+scripts\start-server.bat
 ```
 
 ## Arena Types
@@ -80,20 +74,30 @@ run.bat
 root/
 ├── .gitignore
 ├── README.md
-├── setup.sh / setup.bat        # Setup scripts
-├── run.sh / run.bat            # Server run scripts
 ├── build.gradle.kts            # Main build configuration
 ├── settings.gradle.kts         # Project settings
-├── server/                     # Server files (generated)
+├── gradlew / gradlew.bat       # Gradle wrapper (in root)
+├── scripts/                    # All user scripts
+│   ├── setup.sh / setup.bat    # Setup scripts
+│   ├── run.sh / run.bat        # Server run scripts (Gradle)
+│   ├── start-server.sh / .bat  # Server run scripts (direct Java)
+│   └── fix-locks.sh            # Fix server lock issues
+├── tasks/                      # Gradle task definitions
+├── templates/                  # Configuration templates
+│   ├── phau.properties.defaults # Arena config template
+│   └── server.properties.defaults # Server config template
+├── server/                     # Server files (generated, gitignored)
 │   ├── world/                  # World data
 │   ├── plugins/                # Plugin JAR
-│   ├── paper-1.21.4.jar        # Paper server
-│   ├── server.properties       # Server config
-│   └── eula.txt                # EULA acceptance
+│   ├── phau.properties         # Arena config (from template)
+│   ├── server.properties       # Server config (from template)
+│   └── paper-1.21.4.jar        # Paper server
 ├── external/                   # Downloaded Paper JAR
 ├── plugins/                    # Compiled plugin
-└── src/main/kotlin/com/colosseum/arena/
-    └── ArenaPlugin.kt          # Main plugin
+└── src/                        # Source code
+    └── main/kotlin/com/colosseum/
+        ├── arena/ArenaPlugin.kt          # Main plugin
+        └── core/storage/PropertiesStorage.kt  # Config storage
 ```
 
 ## Gradle Tasks
@@ -147,8 +151,8 @@ To regenerate the arena with different settings:
 # Or manually:
 rm -rf server/world
 
-# Re-run setup with different arena type
-./setup.sh detailed
+# Edit config and restart (arena will regenerate)
+nano server/phau.properties  # Change arena-type
 ```
 
 ## Commands
@@ -212,7 +216,7 @@ gradle wrapper
 ```bash
 # Delete world and restart
 ./gradlew cleanWorld
-./run.sh
+./scripts/start-server.sh
 ```
 
 ### Port Already in Use
@@ -221,12 +225,13 @@ gradle wrapper
 
 **Solution**:
 ```bash
+# Quick fix - kills all Java processes and removes lock files
+./scripts/fix-locks.sh
+
+# Or manually:
 # Find process using port 25565
 lsof -i :25565
-# or
-netstat -tulpn | grep 25565
-
-# Kill process or change port in server/server.properties
+# Kill the process, then try again
 ```
 
 ### Out of Memory

@@ -1,11 +1,16 @@
 @echo off
 REM Start Minecraft server with interactive console
-REM Usage: start-server.bat
+REM Usage: scripts\start-server.bat (or from project root)
+
+REM Change to project root if running from scripts directory
+if exist "..\templates" (
+    cd ..
+)
 
 cd server || exit /b 1
 
 if not exist "eula.txt" (
-    echo [ERROR] Server not set up. Run 'setup.bat [simple^|detailed]' first
+    echo [ERROR] Server not set up. Run 'scripts\setup.bat' first
     exit /b 1
 )
 

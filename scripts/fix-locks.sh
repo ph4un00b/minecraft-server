@@ -1,7 +1,12 @@
 #!/bin/bash
 
 # Fix server lock issues
-# Usage: ./fix-locks.sh
+# Usage: ./scripts/fix-locks.sh (or from project root)
+
+# Change to project root if running from scripts directory
+if [ -d "../templates" ]; then
+    cd ..
+fi
 
 echo "[INFO] Fixing server locks..."
 
@@ -16,4 +21,4 @@ rm -f server/world_nether/session.lock 2>/dev/null || true
 rm -f server/world_the_end/session.lock 2>/dev/null || true
 
 echo "[INFO] Locks cleared. You can now start the server."
-echo "[INFO] Run: ./start-server.sh"
+echo "[INFO] Run: ./scripts/start-server.sh"
