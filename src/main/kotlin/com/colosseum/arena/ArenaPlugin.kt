@@ -1,5 +1,6 @@
 package com.colosseum.arena
 
+import com.colosseum.core.storage.PropertiesStorage
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
@@ -13,10 +14,6 @@ import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.NamespacedKey
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.util.Properties
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -27,14 +24,12 @@ class ArenaPlugin : JavaPlugin(), Listener {
     private val arenaTypeKey = NamespacedKey(this, "arena_type")
     private val prefix = "\u001B[32m[ArenaPlugin]\u001B[0m "
 
-    // Arena configuration - loaded from phau.properties (single source of truth)
-    private var arenaBaseY: Int = 64
-    private var configuredArenaType: String = "detailed"
+    // Arena configuration storage
+    private lateinit var storage: PropertiesStorage
 
     override fun onLoad() {
-        // Load configuration on plugin load
-        arenaBaseY = loadArenaBaseY()
-        configuredArenaType = loadArenaType()
+        // Initialize storage with logger callback
+        storage = PropertiesStorage { msg -> logger.info("${prefix}$msg") }
     }
 
     override fun onEnable() {
@@ -58,95 +53,9 @@ class ArenaPlugin : JavaPlugin(), Listener {
         logger.info("${prefix}Colosseum Arena Plugin disabled.")
     }
 
-    /**
-     * Load arena configuration from phau.properties
-     * Single source of truth for arena settings
-     */
-    private fun loadArenaProperties(): Properties? {
-        return try {
-            val propsFile = File("phau.properties")
-            if (propsFile.exists()) {
-                val props = Properties()
-                FileInputStream(propsFile).use { props.load(it) }
-                props
-            } else {
-                logger.warning("${prefix}phau.properties not found, using default configuration")
-                null
-            }
-        } catch (e: Exception) {
-            logger.warning("${prefix}Failed to load phau.properties: ${e.message}")
-            null
-        }
-    }
-
-    private fun loadArenaBaseY(): Int {
-        val props = loadArenaProperties()
-        val baseY = props?.getProperty("arena-base-y", "64")?.toIntOrNull() ?: 64
-        logger.info("${prefix}Loaded arena-base-y=$baseY from phau.properties")
-        return baseY
-    }
-
-    private fun saveArenaBaseY(newY: Int) {
-        try {
-            val propsFile = File("phau.properties")
-            val props = Properties()
-
-            // Load existing properties if file exists
-            if (propsFile.exists()) {
-                FileInputStream(propsFile).use { props.load(it) }
-            }
-
-            // Update the value
-            props.setProperty("arena-base-y", newY.toString())
-
-            // Save back to file
-            FileOutputStream(propsFile).use {
-                props.store(it, "Arena Configuration - Updated in-game")
-            }
-
-            logger.info("${prefix}Saved arena-base-y=$newY to phau.properties")
-        } catch (e: Exception) {
-            logger.warning("${prefix}Failed to save arena-base-y: ${e.message}")
-        }
-    }
-
-    private fun loadArenaType(): String {
-        val props = loadArenaProperties()
-        val type = props?.getProperty("arena-type", "detailed")?.lowercase() ?: "detailed"
-        logger.info("${prefix}Loaded arena-type=$type from phau.properties")
-        return type
-    }
-    
-    private fun saveArenaType(newType: String) {
-        try {
-            val propsFile = File("phau.properties")
-            val props = Properties()
-            
-            // Load existing properties if file exists
-            if (propsFile.exists()) {
-                FileInputStream(propsFile).use { props.load(it) }
-            }
-            
-            // Update the value
-            props.setProperty("arena-type", newType)
-            
-            // Save back to file
-            FileOutputStream(propsFile).use { 
-                props.store(it, "Arena Configuration - Updated in-game")
-            }
-            
-            // Update runtime variable
-            configuredArenaType = newType
-            
-            logger.info("${prefix}Saved arena-type=$newType to phau.properties")
-        } catch (e: Exception) {
-            logger.warning("${prefix}Failed to save arena-type: ${e.message}")
-        }
-    }
-
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
-        event.player.teleport(Location(server.getWorld("world"), 0.5, (arenaBaseY + 1).toDouble(), 0.5))
+        event.player.teleport(Location(server.getWorld("world"), 0.5, (storage.arenaBaseY + 1).toDouble(), 0.5))
     }
 
     override fun onCommand(
@@ -163,6 +72,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
 
             if (args.isEmpty()) {
                 sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> ]")
+                sender.sendMessage("${prefix}Current config: ${storage.getConfigSummary()}")
                 return true
             }
 
@@ -176,17 +86,17 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 "simple" -> {
                     sender.sendMessage("${prefix}Building simple arena...")
                     rebuildArena(world, "simple")
-                    saveArenaType("simple")
+                    storage.setArenaType("simple")
                     sender.sendMessage("${prefix}Simple arena built! Saved to phau.properties")
                 }
                 "detailed" -> {
                     sender.sendMessage("${prefix}Building detailed gothic arena...")
                     rebuildArena(world, "detailed")
-                    saveArenaType("detailed")
+                    storage.setArenaType("detailed")
                     sender.sendMessage("${prefix}Detailed gothic arena built! Saved to phau.properties")
                 }
                 "rebuild" -> {
-                    val currentType = world.persistentDataContainer.get(arenaTypeKey, PersistentDataType.STRING) ?: "detailed"
+                    val currentType = world.persistentDataContainer.get(arenaTypeKey, PersistentDataType.STRING) ?: storage.arenaType
                     sender.sendMessage("${prefix}Rebuilding arena (type: $currentType)...")
                     rebuildArena(world, currentType)
                     sender.sendMessage("${prefix}Arena rebuilt!")
@@ -194,7 +104,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 "sety" -> {
                     if (args.size < 2) {
                         sender.sendMessage("${prefix}Usage: /arena sety <y-level>")
-                        sender.sendMessage("${prefix}Current Y level: $arenaBaseY")
+                        sender.sendMessage("${prefix}Current Y level: ${storage.arenaBaseY}")
                         return true
                     }
                     val newY = args[1].toIntOrNull()
@@ -202,15 +112,14 @@ class ArenaPlugin : JavaPlugin(), Listener {
                         sender.sendMessage("${prefix}Error: Y level must be between 0 and 255")
                         return true
                     }
-                    val oldY = arenaBaseY
-                    arenaBaseY = newY
-                    saveArenaBaseY(newY)
+                    val oldY = storage.arenaBaseY
+                    storage.setArenaBaseY(newY)
                     sender.sendMessage("${prefix}Changed arena base Y from $oldY to $newY")
                     sender.sendMessage("${prefix}Rebuilding arena at new Y level...")
-                    val currentType = world.persistentDataContainer.get(arenaTypeKey, PersistentDataType.STRING) ?: configuredArenaType
+                    val currentType = world.persistentDataContainer.get(arenaTypeKey, PersistentDataType.STRING) ?: storage.arenaType
                     rebuildArena(world, currentType)
                     // Update spawn location
-                    world.spawnLocation = Location(world, 0.5, (arenaBaseY + 1).toDouble(), 0.5)
+                    world.spawnLocation = Location(world, 0.5, (storage.arenaBaseY + 1).toDouble(), 0.5)
                     sender.sendMessage("${prefix}Arena rebuilt at Y=$newY! Spawn updated.")
                 }
                 else -> {
@@ -230,8 +139,8 @@ class ArenaPlugin : JavaPlugin(), Listener {
             val type = pdc.get(arenaTypeKey, PersistentDataType.STRING) ?: "unknown"
             logger.info("${prefix}Existing arena type: $type")
         } else {
-            val arenaType = determineArenaType()
-            logger.info("${prefix}Building $arenaType arena at Y=$arenaBaseY...")
+            val arenaType = storage.arenaType
+            logger.info("${prefix}Building $arenaType arena at Y=${storage.arenaBaseY}...")
 
             if (arenaType == "simple") {
                 buildSimpleArena(world)
@@ -245,13 +154,8 @@ class ArenaPlugin : JavaPlugin(), Listener {
         }
 
         // Set spawn location (1 block above arena base)
-        val spawnLocation = Location(world, 0.5, (arenaBaseY + 1).toDouble(), 0.5)
+        val spawnLocation = Location(world, 0.5, (storage.arenaBaseY + 1).toDouble(), 0.5)
         world.spawnLocation = spawnLocation
-    }
-
-    private fun determineArenaType(): String {
-        // Use arena-type from phau.properties (single source of truth)
-        return configuredArenaType
     }
 
     private fun rebuildArena(world: World, type: String) {
@@ -274,8 +178,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
 
     private fun clearArenaArea(world: World) {
         val radius = 25
-        // Clear from world bottom (Y=-64) to Y=255 to ensure complete removal
-        // regardless of where the old arena was built
+        // Clear from world bottom to top
         val minY = world.minHeight
         val maxY = world.maxHeight.coerceAtMost(320)
 
@@ -299,7 +202,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
     private fun buildSimpleArena(world: World) {
         val centerX = 0
         val centerZ = 0
-        val groundY = arenaBaseY
+        val groundY = storage.arenaBaseY
         val innerRadius = 12
         val outerRadius = 18
         val wallHeight = 6
@@ -350,7 +253,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
     private fun buildDetailedArena(world: World) {
         val centerX = 0
         val centerZ = 0
-        val groundY = arenaBaseY
+        val groundY = storage.arenaBaseY
 
         // Wall parameters (thick wall: 12.0 <= r <= 19.5)
         val innerRadius = 12.0
