@@ -24,47 +24,36 @@ tasks.register<Exec>("setupServer") {
             into("server")
         }
         
-        // Create server.properties only if it doesn't exist (preserve manual edits)
-        val propsFile = file("server/server.properties")
-        if (!propsFile.exists()) {
-            propsFile.writeText("""
-                |# Colosseum Arena Server Properties
-                |server-port=25565
-                |gamemode=creative
-                |difficulty=peaceful
-                |level-type=flat
-                |max-players=4
-                |spawn-protection=0
-                |view-distance=12
-                |simulation-distance=10
-                |motd=Gothic Battleground
-                |enable-command-block=false
-                |generate-structures=false
-                |spawn-npcs=false
-                |spawn-animals=false
-                |spawn-monsters=false
-                |online-mode=false
-                |enforce-secure-profile=false
-            """.trimMargin())
-            println("[INFO] Server configuration created")
-        } else {
+        // Create server.properties from template (if not exists)
+        val serverDefaults = file("templates/server.properties.defaults")
+        val serverProps = file("server/server.properties")
+        if (!serverProps.exists() && serverDefaults.exists()) {
+            copy {
+                from("templates/server.properties.defaults")
+                into("server")
+                rename { "server.properties" }
+            }
+            println("[INFO] Server configuration created from templates/server.properties.defaults")
+        } else if (serverProps.exists()) {
             println("[INFO] Server configuration already exists, preserving manual changes")
+        } else {
+            println("[WARN] templates/server.properties.defaults not found")
         }
         
-        // Copy phau.properties.defaults to server as phau.properties (if not exists)
-        val phauDefaults = file("phau.properties.defaults")
+        // Create phau.properties from template (if not exists)
+        val phauDefaults = file("templates/phau.properties.defaults")
         val phauProps = file("server/phau.properties")
         if (!phauProps.exists() && phauDefaults.exists()) {
             copy {
-                from("phau.properties.defaults")
+                from("templates/phau.properties.defaults")
                 into("server")
                 rename { "phau.properties" }
             }
-            println("[INFO] Arena configuration (phau.properties) created from defaults")
+            println("[INFO] Arena configuration created from templates/phau.properties.defaults")
         } else if (phauProps.exists()) {
-            println("[INFO] Arena configuration (phau.properties) already exists, preserving manual changes")
+            println("[INFO] Arena configuration already exists, preserving manual changes")
         } else {
-            println("[WARN] phau.properties.defaults not found in project root")
+            println("[WARN] templates/phau.properties.defaults not found")
         }
         
         println("[INFO] Server files prepared")

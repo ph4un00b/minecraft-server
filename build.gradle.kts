@@ -61,12 +61,13 @@ tasks.register("setup") {
 
     doFirst {
         println("[INFO] Starting server setup...")
-        println("[INFO] Template: phau.properties.defaults -> server/phau.properties")
+        println("[INFO] Templates: templates/ -> server/")
     }
 
     doLast {
         println("[INFO] Setup complete!")
         println("[INFO] Edit server/phau.properties to configure arena settings")
+        println("[INFO] Edit server/server.properties for server settings")
         println("[INFO] Run './start-server.sh' to start")
     }
 }

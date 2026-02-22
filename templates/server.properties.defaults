@@ -1,0 +1,20 @@
+# Colosseum Arena Server Properties
+# This template is copied to server/server.properties on first setup
+# After setup, edit server/server.properties directly
+
+server-port=25565
+gamemode=creative
+difficulty=peaceful
+level-type=flat
+max-players=4
+spawn-protection=0
+view-distance=12
+simulation-distance=10
+motd=Gothic Battleground
+enable-command-block=false
+generate-structures=false
+spawn-npcs=false
+spawn-animals=false
+spawn-monsters=false
+online-mode=false
+enforce-secure-profile=false
