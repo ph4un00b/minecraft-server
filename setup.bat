@@ -1,25 +1,22 @@
 @echo off
-REM Arena Type Selection Script for Windows
-REM Usage: setup.bat [simple|detailed]
+REM Setup Script
+REM Usage: setup.bat
+REM 
+REM Arena configuration is in phau.properties (created from phau.properties.defaults)
+REM Edit phau.properties after setup to customize:
+REM   - arena-base-y: Base Y level (default: 64)
+REM   - arena-type: simple or detailed (default: detailed)
 
-set ARENA_TYPE=%1
-if "%ARENA_TYPE%"=="" set ARENA_TYPE=detailed
+echo [INFO] Setting up Colosseum Arena...
+echo [INFO] Template: phau.properties.defaults
+echo [INFO] Edit server\phau.properties to change arena settings
 
-if not "%ARENA_TYPE%"=="simple" if not "%ARENA_TYPE%"=="detailed" (
-    echo [ERROR] Invalid arena type. Use 'simple' or 'detailed'
-    echo Usage: setup.bat [simple^|detailed]
-    exit /b 1
-)
-
-echo [INFO] Setting up Colosseum Arena with %ARENA_TYPE% arena...
-
-REM Pass arena type as Gradle property
-call gradlew.bat setup -ParenaType=%ARENA_TYPE% --no-daemon
+call gradlew.bat setup --no-daemon
 if errorlevel 1 (
     echo [ERROR] Setup failed
     exit /b 1
 )
 
 echo [INFO] Setup complete!
-echo [INFO] Arena type: %ARENA_TYPE%
-echo [INFO] Run 'run.bat' or 'start-server.bat' to start the server
+echo [INFO] Edit server\phau.properties to change arena settings
+echo [INFO] Run 'start-server.bat' to start the server

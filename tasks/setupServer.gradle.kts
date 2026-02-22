@@ -51,6 +51,22 @@ tasks.register<Exec>("setupServer") {
             println("[INFO] Server configuration already exists, preserving manual changes")
         }
         
+        // Copy phau.properties.defaults to server as phau.properties (if not exists)
+        val phauDefaults = file("phau.properties.defaults")
+        val phauProps = file("server/phau.properties")
+        if (!phauProps.exists() && phauDefaults.exists()) {
+            copy {
+                from("phau.properties.defaults")
+                into("server")
+                rename { "phau.properties" }
+            }
+            println("[INFO] Arena configuration (phau.properties) created from defaults")
+        } else if (phauProps.exists()) {
+            println("[INFO] Arena configuration (phau.properties) already exists, preserving manual changes")
+        } else {
+            println("[WARN] phau.properties.defaults not found in project root")
+        }
+        
         println("[INFO] Server files prepared")
     }
     

@@ -1,0 +1,13 @@
+# Arena Configuration
+# This is the single source of truth for arena settings
+# Edit this file to customize the arena
+
+# Base Y level where the arena floor is built
+# Default: 64 (standard Minecraft flat world ground)
+# Range: 0-255 (Minecraft world height limits)
+arena-base-y=64
+
+# Arena type (simple or detailed)
+# simple: Basic circular wall with gate (~5k blocks)
+# detailed: Gothic architecture with buttresses, windows (~45k blocks)
+arena-type=detailed

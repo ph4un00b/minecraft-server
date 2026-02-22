@@ -13,6 +13,9 @@ import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.NamespacedKey
+import java.io.File
+import java.io.FileInputStream
+import java.util.Properties
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -22,6 +25,10 @@ class ArenaPlugin : JavaPlugin(), Listener {
     private val arenaBuiltKey = NamespacedKey(this, "arena_built")
     private val arenaTypeKey = NamespacedKey(this, "arena_type")
     private val prefix = "\u001B[32m[ArenaPlugin]\u001B[0m "
+    
+    // Arena configuration - loaded from phau.properties (single source of truth)
+    private val arenaBaseY: Int by lazy { loadArenaBaseY() }
+    private val configuredArenaType: String by lazy { loadArenaType() }
     
     override fun onEnable() {
         logger.info("${prefix}Enabling Colosseum Arena Plugin...")
@@ -44,9 +51,44 @@ class ArenaPlugin : JavaPlugin(), Listener {
         logger.info("${prefix}Colosseum Arena Plugin disabled.")
     }
     
+    /**
+     * Load arena configuration from phau.properties
+     * Single source of truth for arena settings
+     */
+    private fun loadArenaProperties(): Properties? {
+        return try {
+            val propsFile = File("phau.properties")
+            if (propsFile.exists()) {
+                val props = Properties()
+                FileInputStream(propsFile).use { props.load(it) }
+                props
+            } else {
+                logger.warning("${prefix}phau.properties not found, using default configuration")
+                null
+            }
+        } catch (e: Exception) {
+            logger.warning("${prefix}Failed to load phau.properties: ${e.message}")
+            null
+        }
+    }
+    
+    private fun loadArenaBaseY(): Int {
+        val props = loadArenaProperties()
+        val baseY = props?.getProperty("arena-base-y", "64")?.toIntOrNull() ?: 64
+        logger.info("${prefix}Loaded arena-base-y=$baseY from phau.properties")
+        return baseY
+    }
+    
+    private fun loadArenaType(): String {
+        val props = loadArenaProperties()
+        val type = props?.getProperty("arena-type", "detailed")?.lowercase() ?: "detailed"
+        logger.info("${prefix}Loaded arena-type=$type from phau.properties")
+        return type
+    }
+    
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
-        event.player.teleport(Location(server.getWorld("world"), 0.5, 65.0, 0.5))
+        event.player.teleport(Location(server.getWorld("world"), 0.5, (arenaBaseY + 1).toDouble(), 0.5))
     }
     
     override fun onCommand(
@@ -107,7 +149,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
             logger.info("${prefix}Existing arena type: $type")
         } else {
             val arenaType = determineArenaType()
-            logger.info("${prefix}Building $arenaType arena at spawn...")
+            logger.info("${prefix}Building $arenaType arena at Y=$arenaBaseY...")
             
             if (arenaType == "simple") {
                 buildSimpleArena(world)
@@ -120,23 +162,14 @@ class ArenaPlugin : JavaPlugin(), Listener {
             logger.info("${prefix}Arena construction complete!")
         }
         
-        // Set spawn location
-        val spawnLocation = Location(world, 0.5, 65.0, 0.5)
+        // Set spawn location (1 block above arena base)
+        val spawnLocation = Location(world, 0.5, (arenaBaseY + 1).toDouble(), 0.5)
         world.spawnLocation = spawnLocation
     }
     
     private fun determineArenaType(): String {
-        // Check for environment variable or system property
-        val envType = System.getenv("ARENA_TYPE")
-        val propType = System.getProperty("arena.type")
-        
-        return when {
-            envType?.lowercase() == "simple" -> "simple"
-            envType?.lowercase() == "detailed" -> "detailed"
-            propType?.lowercase() == "simple" -> "simple"
-            propType?.lowercase() == "detailed" -> "detailed"
-            else -> "detailed" // Default to detailed
-        }
+        // Use arena-type from phau.properties (single source of truth)
+        return configuredArenaType
     }
     
     private fun rebuildArena(world: World, type: String) {
@@ -159,9 +192,11 @@ class ArenaPlugin : JavaPlugin(), Listener {
     
     private fun clearArenaArea(world: World) {
         val radius = 25
+        val minY = (arenaBaseY - 4).coerceAtLeast(0)
+        val maxY = arenaBaseY + 30
         for (x in -radius..radius) {
             for (z in -radius..radius) {
-                for (y in 60..90) {
+                for (y in minY..maxY) {
                     val block = world.getBlockAt(x, y, z)
                     if (block.type != Material.BEDROCK) {
                         block.type = Material.AIR
@@ -174,7 +209,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
     private fun buildSimpleArena(world: World) {
         val centerX = 0
         val centerZ = 0
-        val groundY = 64
+        val groundY = arenaBaseY
         val innerRadius = 12
         val outerRadius = 18
         val wallHeight = 6
@@ -225,7 +260,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
     private fun buildDetailedArena(world: World) {
         val centerX = 0
         val centerZ = 0
-        val groundY = 64
+        val groundY = arenaBaseY
         
         // Wall parameters (thick wall: 12.0 <= r <= 19.5)
         val innerRadius = 12.0

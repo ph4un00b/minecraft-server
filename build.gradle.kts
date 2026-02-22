@@ -51,35 +51,22 @@ apply(from = "tasks/setupServer.gradle.kts")
 apply(from = "tasks/runServer.gradle.kts")
 apply(from = "tasks/cleanWorld.gradle.kts")
 
-// Arena type configuration via Gradle property
-// Usage: ./gradlew setup -ParenaType=simple (or detailed)
-// Default: detailed
-val arenaType: String by extra {
-    (project.findProperty("arenaType") as? String)?.lowercase() 
-        ?: System.getenv("ARENA_TYPE")?.lowercase()
-        ?: "detailed"
-}
-
-// Validate arena type
-if (arenaType !in listOf("simple", "detailed")) {
-    throw GradleException("[ERROR] Invalid arena type '$arenaType'. Use 'simple' or 'detailed'")
-}
-
 // Full setup task that orchestrates the modular tasks
+// Arena configuration is in phau.properties (single source of truth)
 tasks.register("setup") {
     group = "setup"
-    description = "Complete setup: validate Java, download Paper, build plugin, init server. Use -ParenaType=simple or detailed"
+    description = "Complete setup: validate Java, download Paper, build plugin, init server"
 
     dependsOn("setupServer")
 
     doFirst {
-        println("[INFO] Setting up with arena type: $arenaType")
-        // Pass arena type to the running server via system property
-        System.setProperty("arena.type", arenaType)
+        println("[INFO] Starting server setup...")
+        println("[INFO] Template: phau.properties.defaults -> server/phau.properties")
     }
 
     doLast {
-        println("[INFO] Setup complete with $arenaType arena!")
-        println("[INFO] Run './gradlew runServer' or './start-server.sh' to start")
+        println("[INFO] Setup complete!")
+        println("[INFO] Edit server/phau.properties to configure arena settings")
+        println("[INFO] Run './start-server.sh' to start")
     }
 }
