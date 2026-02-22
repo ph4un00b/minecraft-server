@@ -12,13 +12,13 @@ if [ "$ARENA_TYPE" != "simple" ] && [ "$ARENA_TYPE" != "detailed" ]; then
 fi
 
 echo "[INFO] Setting up Colosseum Arena with $ARENA_TYPE arena..."
-export ARENA_TYPE="$ARENA_TYPE"
 
-if ! ./gradlew setup --no-daemon; then
+# Pass arena type as Gradle property
+if ! ./gradlew setup -ParenaType="$ARENA_TYPE" --no-daemon; then
     echo "[ERROR] Setup failed"
     exit 1
 fi
 
 echo "[INFO] Setup complete!"
 echo "[INFO] Arena type: $ARENA_TYPE"
-echo "[INFO] Run './run.sh' to start the server"
+echo "[INFO] Run './start-server.sh' to start the server"
