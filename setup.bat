@@ -1,7 +1,7 @@
 @echo off
 REM Setup Script
 REM Usage: setup.bat
-REM 
+REM
 REM Templates are in templates\ folder:
 REM   - templates\server.properties.defaults -> server\server.properties
 REM   - templates\phau.properties.defaults -> server\phau.properties
@@ -18,4 +18,5 @@ if errorlevel 1 (
 
 echo [INFO] Setup complete!
 echo [INFO] Edit server\phau.properties to change arena settings
+echo [INFO] In-game: /arena sety ^<level^> to change Y level
 echo [INFO] Run 'start-server.bat' to start the server

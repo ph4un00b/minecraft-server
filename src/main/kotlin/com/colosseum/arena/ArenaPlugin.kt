@@ -15,42 +15,49 @@ import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.NamespacedKey
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.util.Properties
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 class ArenaPlugin : JavaPlugin(), Listener {
-    
+
     private val arenaBuiltKey = NamespacedKey(this, "arena_built")
     private val arenaTypeKey = NamespacedKey(this, "arena_type")
     private val prefix = "\u001B[32m[ArenaPlugin]\u001B[0m "
-    
+
     // Arena configuration - loaded from phau.properties (single source of truth)
-    private val arenaBaseY: Int by lazy { loadArenaBaseY() }
-    private val configuredArenaType: String by lazy { loadArenaType() }
-    
+    private var arenaBaseY: Int = 64
+    private var configuredArenaType: String = "detailed"
+
+    override fun onLoad() {
+        // Load configuration on plugin load
+        arenaBaseY = loadArenaBaseY()
+        configuredArenaType = loadArenaType()
+    }
+
     override fun onEnable() {
         logger.info("${prefix}Enabling Colosseum Arena Plugin...")
-        
+
         server.pluginManager.registerEvents(this, this)
-        
+
         val world = server.getWorld("world")
         if (world == null) {
             logger.severe("${prefix}Default world not found! Plugin disabled.")
             server.pluginManager.disablePlugin(this)
             return
         }
-        
+
         checkAndBuildArena(world)
-        
+
         logger.info("${prefix}Colosseum Arena Plugin enabled successfully!")
     }
-    
+
     override fun onDisable() {
         logger.info("${prefix}Colosseum Arena Plugin disabled.")
     }
-    
+
     /**
      * Load arena configuration from phau.properties
      * Single source of truth for arena settings
@@ -71,26 +78,50 @@ class ArenaPlugin : JavaPlugin(), Listener {
             null
         }
     }
-    
+
     private fun loadArenaBaseY(): Int {
         val props = loadArenaProperties()
         val baseY = props?.getProperty("arena-base-y", "64")?.toIntOrNull() ?: 64
         logger.info("${prefix}Loaded arena-base-y=$baseY from phau.properties")
         return baseY
     }
-    
+
+    private fun saveArenaBaseY(newY: Int) {
+        try {
+            val propsFile = File("phau.properties")
+            val props = Properties()
+
+            // Load existing properties if file exists
+            if (propsFile.exists()) {
+                FileInputStream(propsFile).use { props.load(it) }
+            }
+
+            // Update the value
+            props.setProperty("arena-base-y", newY.toString())
+
+            // Save back to file
+            FileOutputStream(propsFile).use {
+                props.store(it, "Arena Configuration - Updated in-game")
+            }
+
+            logger.info("${prefix}Saved arena-base-y=$newY to phau.properties")
+        } catch (e: Exception) {
+            logger.warning("${prefix}Failed to save arena-base-y: ${e.message}")
+        }
+    }
+
     private fun loadArenaType(): String {
         val props = loadArenaProperties()
         val type = props?.getProperty("arena-type", "detailed")?.lowercase() ?: "detailed"
         logger.info("${prefix}Loaded arena-type=$type from phau.properties")
         return type
     }
-    
+
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
         event.player.teleport(Location(server.getWorld("world"), 0.5, (arenaBaseY + 1).toDouble(), 0.5))
     }
-    
+
     override fun onCommand(
         sender: CommandSender,
         command: Command,
@@ -102,18 +133,18 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 sender.sendMessage("${prefix}You don't have permission to use this command.")
                 return true
             }
-            
+
             if (args.isEmpty()) {
-                sender.sendMessage("${prefix}Usage: /arena [simple|detailed|rebuild]")
+                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> ]")
                 return true
             }
-            
+
             val world = server.getWorld("world")
             if (world == null) {
                 sender.sendMessage("${prefix}Error: World not found!")
                 return true
             }
-            
+
             when (args[0].lowercase()) {
                 "simple" -> {
                     sender.sendMessage("${prefix}Building simple arena...")
@@ -131,18 +162,40 @@ class ArenaPlugin : JavaPlugin(), Listener {
                     rebuildArena(world, currentType)
                     sender.sendMessage("${prefix}Arena rebuilt!")
                 }
+                "sety" -> {
+                    if (args.size < 2) {
+                        sender.sendMessage("${prefix}Usage: /arena sety <y-level>")
+                        sender.sendMessage("${prefix}Current Y level: $arenaBaseY")
+                        return true
+                    }
+                    val newY = args[1].toIntOrNull()
+                    if (newY == null || newY < 0 || newY > 255) {
+                        sender.sendMessage("${prefix}Error: Y level must be between 0 and 255")
+                        return true
+                    }
+                    val oldY = arenaBaseY
+                    arenaBaseY = newY
+                    saveArenaBaseY(newY)
+                    sender.sendMessage("${prefix}Changed arena base Y from $oldY to $newY")
+                    sender.sendMessage("${prefix}Rebuilding arena at new Y level...")
+                    val currentType = world.persistentDataContainer.get(arenaTypeKey, PersistentDataType.STRING) ?: configuredArenaType
+                    rebuildArena(world, currentType)
+                    // Update spawn location
+                    world.spawnLocation = Location(world, 0.5, (arenaBaseY + 1).toDouble(), 0.5)
+                    sender.sendMessage("${prefix}Arena rebuilt at Y=$newY! Spawn updated.")
+                }
                 else -> {
-                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, or rebuild")
+                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, or sety")
                 }
             }
             return true
         }
         return false
     }
-    
+
     private fun checkAndBuildArena(world: World) {
         val pdc = world.persistentDataContainer
-        
+
         if (pdc.has(arenaBuiltKey, PersistentDataType.INTEGER)) {
             logger.info("${prefix}Arena already built. Skipping generation.")
             val type = pdc.get(arenaTypeKey, PersistentDataType.STRING) ?: "unknown"
@@ -150,62 +203,70 @@ class ArenaPlugin : JavaPlugin(), Listener {
         } else {
             val arenaType = determineArenaType()
             logger.info("${prefix}Building $arenaType arena at Y=$arenaBaseY...")
-            
+
             if (arenaType == "simple") {
                 buildSimpleArena(world)
             } else {
                 buildDetailedArena(world)
             }
-            
+
             pdc.set(arenaBuiltKey, PersistentDataType.INTEGER, 1)
             pdc.set(arenaTypeKey, PersistentDataType.STRING, arenaType)
             logger.info("${prefix}Arena construction complete!")
         }
-        
+
         // Set spawn location (1 block above arena base)
         val spawnLocation = Location(world, 0.5, (arenaBaseY + 1).toDouble(), 0.5)
         world.spawnLocation = spawnLocation
     }
-    
+
     private fun determineArenaType(): String {
         // Use arena-type from phau.properties (single source of truth)
         return configuredArenaType
     }
-    
+
     private fun rebuildArena(world: World, type: String) {
         // Clear existing arena markers
         world.persistentDataContainer.remove(arenaBuiltKey)
-        
+
         // Clear the arena area
         clearArenaArea(world)
-        
+
         // Build new arena
         if (type == "simple") {
             buildSimpleArena(world)
         } else {
             buildDetailedArena(world)
         }
-        
+
         world.persistentDataContainer.set(arenaBuiltKey, PersistentDataType.INTEGER, 1)
         world.persistentDataContainer.set(arenaTypeKey, PersistentDataType.STRING, type)
     }
-    
+
     private fun clearArenaArea(world: World) {
         val radius = 25
-        val minY = (arenaBaseY - 4).coerceAtLeast(0)
-        val maxY = arenaBaseY + 30
+        // Clear from world bottom (Y=-64) to Y=255 to ensure complete removal
+        // regardless of where the old arena was built
+        val minY = world.minHeight
+        val maxY = world.maxHeight.coerceAtMost(320)
+
+        logger.info("${prefix}Clearing arena area (radius=$radius, Y=$minY to $maxY)...")
+
         for (x in -radius..radius) {
             for (z in -radius..radius) {
                 for (y in minY..maxY) {
                     val block = world.getBlockAt(x, y, z)
+                    // Remove everything except bedrock
                     if (block.type != Material.BEDROCK) {
                         block.type = Material.AIR
                     }
                 }
             }
         }
+
+        logger.info("${prefix}Arena area cleared")
     }
-    
+
     private fun buildSimpleArena(world: World) {
         val centerX = 0
         val centerZ = 0
@@ -213,7 +274,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
         val innerRadius = 12
         val outerRadius = 18
         val wallHeight = 6
-        
+
         // Build ground
         for (x in -outerRadius..outerRadius) {
             for (z in -outerRadius..outerRadius) {
@@ -223,7 +284,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 }
             }
         }
-        
+
         // Build wall ring
         for (x in -outerRadius..outerRadius) {
             for (z in -outerRadius..outerRadius) {
@@ -235,7 +296,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 }
             }
         }
-        
+
         // Create entrance (gate) at North
         for (x in -3..3) {
             for (y in groundY + 1..groundY + wallHeight) {
@@ -244,7 +305,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 }
             }
         }
-        
+
         // Add gate arch
         for (x in -4..4) {
             world.getBlockAt(centerX + x, groundY + wallHeight + 1, centerZ - outerRadius).type = Material.STONE_BRICKS
@@ -253,45 +314,45 @@ class ArenaPlugin : JavaPlugin(), Listener {
             world.getBlockAt(centerX - 4, y, centerZ - outerRadius).type = Material.STONE_BRICKS
             world.getBlockAt(centerX + 4, y, centerZ - outerRadius).type = Material.STONE_BRICKS
         }
-        
+
         logger.info("${prefix}Simple arena built: $innerRadius-$outerRadius radius, ${wallHeight}m walls")
     }
-    
+
     private fun buildDetailedArena(world: World) {
         val centerX = 0
         val centerZ = 0
         val groundY = arenaBaseY
-        
+
         // Wall parameters (thick wall: 12.0 <= r <= 19.5)
         val innerRadius = 12.0
         val outerRadius = 19.5
         val wallHeight = 10
         val wallTop = groundY + wallHeight
-        
+
         // Build ground
         buildGround(world, centerX, centerZ, groundY, outerRadius.toInt() + 2)
-        
+
         // Build thick wall with gothic architecture
         buildThickWall(world, centerX, centerZ, groundY, innerRadius, outerRadius, wallHeight)
-        
+
         // Build buttresses at cardinal and intercardinal directions (skip North for gate)
         buildButtresses(world, centerX, centerZ, groundY, outerRadius, wallHeight)
-        
+
         // Build windows at 22.5 degree offsets
         buildWindows(world, centerX, centerZ, groundY, innerRadius, outerRadius, wallHeight)
-        
+
         // Build gate at North
         buildGate(world, centerX, centerZ, groundY, outerRadius, wallHeight)
-        
+
         // Add crenellations
         buildCrenellations(world, centerX, centerZ, wallTop, innerRadius, outerRadius)
-        
+
         // Add floor pattern
         buildFloorPattern(world, centerX, centerZ, groundY, innerRadius.toInt())
-        
+
         logger.info("${prefix}Detailed gothic arena built with buttresses, windows, and gate")
     }
-    
+
     private fun buildGround(world: World, centerX: Int, centerZ: Int, groundY: Int, radius: Int) {
         for (x in -radius..radius) {
             for (z in -radius..radius) {
@@ -307,7 +368,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
             }
         }
     }
-    
+
     private fun buildThickWall(
         world: World,
         centerX: Int,
@@ -318,16 +379,16 @@ class ArenaPlugin : JavaPlugin(), Listener {
         wallHeight: Int
     ) {
         val wallTop = groundY + wallHeight
-        
+
         for (x in -outerRadius.toInt()..outerRadius.toInt()) {
             for (z in -outerRadius.toInt()..outerRadius.toInt()) {
                 val distance = sqrt((x * x + z * z).toDouble())
-                
+
                 // Wall condition: 12.0 <= distance <= 19.5
                 if (distance >= innerRadius && distance <= outerRadius) {
                     for (y in groundY + 1..wallTop) {
                         val block = world.getBlockAt(centerX + x, y, centerZ + z)
-                        
+
                         // Varied stone materials for texture
                         block.type = when {
                             distance > 18 -> Material.DEEPSLATE_BRICKS
@@ -339,7 +400,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
             }
         }
     }
-    
+
     private fun buildButtresses(
         world: World,
         centerX: Int,
@@ -350,12 +411,12 @@ class ArenaPlugin : JavaPlugin(), Listener {
     ) {
         // Buttresses at E, SE, S, SW, W, NW, NE (skip N for gate)
         val buttressAngles = listOf(0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 315.0)
-        
+
         for (angleDeg in buttressAngles) {
             val angleRad = Math.toRadians(angleDeg)
             val x = (cos(angleRad) * outerRadius).toInt()
             val z = (sin(angleRad) * outerRadius).toInt()
-            
+
             // Build buttress (3x3 base, tapering up)
             for (by in groundY + 1..groundY + wallHeight + 2) {
                 val width = when {
@@ -363,7 +424,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
                     by < groundY + 6 -> 1
                     else -> 0
                 }
-                
+
                 for (bx in -width..width) {
                     for (bz in -width..width) {
                         val blockX = centerX + x + bx
@@ -375,7 +436,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
             }
         }
     }
-    
+
     private fun buildWindows(
         world: World,
         centerX: Int,
@@ -388,15 +449,15 @@ class ArenaPlugin : JavaPlugin(), Listener {
         // Windows at 22.5 degree offsets from buttresses
         val windowAngles = listOf(22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5)
         val windowWidth = 3
-        
+
         for (angleDeg in windowAngles) {
             val angleRad = Math.toRadians(angleDeg)
-            
+
             // Carve window through wall thickness
             for (r in innerRadius.toInt()..outerRadius.toInt()) {
                 val x = (cos(angleRad) * r).toInt()
                 val z = (sin(angleRad) * r).toInt()
-                
+
                 // Window height (gothic arch shape)
                 for (wy in groundY + 2..groundY + 6) {
                     val isArch = wy == groundY + 6 && r > (innerRadius + outerRadius) / 2
@@ -407,7 +468,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
             }
         }
     }
-    
+
     private fun buildGate(
         world: World,
         centerX: Int,
@@ -420,7 +481,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
         val gateZ = -outerRadius.toInt()
         val gateWidth = 5
         val gateHeight = 8
-        
+
         // Carve opening
         for (x in -gateWidth..gateWidth) {
             for (y in groundY + 1..groundY + gateHeight) {
@@ -429,18 +490,18 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 }
             }
         }
-        
+
         // Build arch
         val archRadius = gateWidth + 1
         for (angle in 0..180) {
             val rad = Math.toRadians(angle.toDouble())
             val archX = (cos(rad) * archRadius).toInt()
             val archY = (sin(rad) * (gateHeight / 2)).toInt()
-            
-            world.getBlockAt(centerX + archX, groundY + gateHeight + archY, centerZ + gateZ).type = 
+
+            world.getBlockAt(centerX + archX, groundY + gateHeight + archY, centerZ + gateZ).type =
                 Material.CHISELED_STONE_BRICKS
         }
-        
+
         // Gate towers
         for (towerX in listOf(-gateWidth - 1, gateWidth + 1)) {
             for (y in groundY + 1..groundY + wallHeight + 3) {
@@ -450,7 +511,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
             }
         }
     }
-    
+
     private fun buildCrenellations(
         world: World,
         centerX: Int,
@@ -462,25 +523,25 @@ class ArenaPlugin : JavaPlugin(), Listener {
         // Add battlements every 2 blocks
         for (angle in 0 until 360 step 10) {
             val rad = Math.toRadians(angle.toDouble())
-            
+
             // Outer crenellations
             val outerX = (cos(rad) * (outerRadius + 0.5)).toInt()
             val outerZ = (sin(rad) * (outerRadius + 0.5)).toInt()
-            
+
             if (angle % 20 == 0) {
                 world.getBlockAt(centerX + outerX, wallTop + 1, centerZ + outerZ).type = Material.STONE_BRICK_WALL
             }
-            
+
             // Skip inner crenellations at gate
             val innerX = (cos(rad) * (innerRadius - 0.5)).toInt()
             val innerZ = (sin(rad) * (innerRadius - 0.5)).toInt()
-            
+
             if (angle % 20 == 0 && innerZ > -18) {
                 world.getBlockAt(centerX + innerX, wallTop + 1, centerZ + innerZ).type = Material.STONE_BRICK_WALL
             }
         }
     }
-    
+
     private fun buildFloorPattern(world: World, centerX: Int, centerZ: Int, groundY: Int, radius: Int) {
         // Create a decorative floor pattern in the arena
         for (x in -radius..radius) {
@@ -488,7 +549,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 val distance = sqrt((x * x + z * z).toDouble())
                 if (distance <= radius) {
                     val block = world.getBlockAt(centerX + x, groundY, centerZ + z)
-                    
+
                     // Concentric circles pattern
                     val patternRadius = distance.toInt()
                     block.type = when {
@@ -500,7 +561,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 }
             }
         }
-        
+
         // Center podium
         for (x in -2..2) {
             for (z in -2..2) {

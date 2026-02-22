@@ -1,7 +1,7 @@
 name: ColosseumArena
 version: 1.0
 main: com.colosseum.arena.ArenaPlugin
-api-version: '1.21'
+api-version: "1.21"
 description: Auto-generates a gothic colosseum arena at world spawn
 author: ArenaBuilder
 
