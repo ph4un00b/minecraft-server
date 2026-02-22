@@ -1,0 +1,39 @@
+# Gradle
+.gradle/
+build/
+gradle/
+gradlew
+gradlew.bat
+
+# Server files
+server/
+plugins/*.jar
+external/*.jar
+external/.build-number
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+server/logs/
+
+# Runtime
+*.class
+bin/
+out/
+
+# Keep directory structure
+!external/.gitkeep
+!plugins/.gitkeep
