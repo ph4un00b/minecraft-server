@@ -116,6 +116,33 @@ class ArenaPlugin : JavaPlugin(), Listener {
         logger.info("${prefix}Loaded arena-type=$type from phau.properties")
         return type
     }
+    
+    private fun saveArenaType(newType: String) {
+        try {
+            val propsFile = File("phau.properties")
+            val props = Properties()
+            
+            // Load existing properties if file exists
+            if (propsFile.exists()) {
+                FileInputStream(propsFile).use { props.load(it) }
+            }
+            
+            // Update the value
+            props.setProperty("arena-type", newType)
+            
+            // Save back to file
+            FileOutputStream(propsFile).use { 
+                props.store(it, "Arena Configuration - Updated in-game")
+            }
+            
+            // Update runtime variable
+            configuredArenaType = newType
+            
+            logger.info("${prefix}Saved arena-type=$newType to phau.properties")
+        } catch (e: Exception) {
+            logger.warning("${prefix}Failed to save arena-type: ${e.message}")
+        }
+    }
 
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
@@ -149,12 +176,14 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 "simple" -> {
                     sender.sendMessage("${prefix}Building simple arena...")
                     rebuildArena(world, "simple")
-                    sender.sendMessage("${prefix}Simple arena built!")
+                    saveArenaType("simple")
+                    sender.sendMessage("${prefix}Simple arena built! Saved to phau.properties")
                 }
                 "detailed" -> {
                     sender.sendMessage("${prefix}Building detailed gothic arena...")
                     rebuildArena(world, "detailed")
-                    sender.sendMessage("${prefix}Detailed gothic arena built!")
+                    saveArenaType("detailed")
+                    sender.sendMessage("${prefix}Detailed gothic arena built! Saved to phau.properties")
                 }
                 "rebuild" -> {
                     val currentType = world.persistentDataContainer.get(arenaTypeKey, PersistentDataType.STRING) ?: "detailed"
