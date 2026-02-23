@@ -370,7 +370,7 @@ step5b_verify_version() {
     
     # Build just the plugin JAR (not full setup)
     log_info "Building plugin to generate version info..."
-    su - "$USER" -c "cd $PROJECT_DIR && ./gradlew generateVersionFile jar --no-daemon --console=plain" || {
+    su - "$USER" -c "cd $PROJECT_DIR && ./gradlew jar --no-daemon --console=plain" || {
         log_error "Build failed! Cannot verify version."
         return 1
     }
