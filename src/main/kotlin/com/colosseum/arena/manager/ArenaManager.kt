@@ -3,6 +3,7 @@ package com.colosseum.arena.manager
 import org.bukkit.World
 import org.bukkit.Location
 import org.bukkit.NamespacedKey
+import org.bukkit.entity.Player
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.plugin.java.JavaPlugin
 import com.colosseum.arena.domain.ArenaType
@@ -11,6 +12,7 @@ import com.colosseum.arena.builders.SimpleArena
 import com.colosseum.arena.builders.DetailedArena
 import com.colosseum.arena.operations.ArenaClearer
 import com.colosseum.arena.operations.YLevelChanger
+import com.colosseum.arena.combat.CombatKit
 import com.colosseum.core.storage.PropertiesStorage
 
 /**
@@ -23,6 +25,7 @@ class ArenaManager(
     private val detailedArena: DetailedArena,
     private val clearer: ArenaClearer,
     private val yLevelChanger: YLevelChanger,
+    private val combatKit: CombatKit,
     private val storage: PropertiesStorage,
     plugin: JavaPlugin
 ) {
@@ -106,6 +109,23 @@ class ArenaManager(
      */
     fun resetBuiltFlag(world: World) {
         world.persistentDataContainer.remove(arenaBuiltKey)
+    }
+
+    /**
+     * Equip player with combat kit
+     * Delegate to CombatKit
+     */
+    fun equipPlayer(player: Player) {
+        combatKit.equipPlayer(player)
+    }
+
+    /**
+     * Restock player with arrows and repair bow
+     * Delegate to CombatKit
+     * @return true if successful, false if player has no bow
+     */
+    fun restockPlayer(player: Player): Boolean {
+        return combatKit.restockPlayer(player)
     }
 
     /**

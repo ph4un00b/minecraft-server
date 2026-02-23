@@ -6,6 +6,8 @@ import com.colosseum.arena.builders.SimpleArena
 import com.colosseum.arena.builders.DetailedArena
 import com.colosseum.arena.operations.ArenaClearer
 import com.colosseum.arena.operations.YLevelChanger
+import com.colosseum.arena.combat.CombatKit
+import com.colosseum.arena.combat.KitConfig
 import com.colosseum.core.storage.PropertiesStorage
 import org.bukkit.Bukkit
 import org.bukkit.Location
@@ -16,35 +18,39 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerJoinEvent
-import org.bukkit.persistence.PersistentDataType
+import org.bukkit.event.player.PlayerRespawnEvent
 import org.bukkit.plugin.java.JavaPlugin
-import org.bukkit.NamespacedKey
 
 class ArenaPlugin : JavaPlugin(), Listener {
 
     private val prefix = "\u001B[32m[ArenaPlugin]\u001B[0m "
-
+    
     // Arena manager - the facade
     private lateinit var manager: ArenaManager
 
     override fun onLoad() {
         // Create storage
         val storage = PropertiesStorage { msg -> logger.info("${prefix}$msg") }
-
+        
         // Create operations
         val clearer = ArenaClearer()
         val yLevelChanger = YLevelChanger(storage, clearer)
-
+        
         // Create builders (one instance each)
         val simpleArena = SimpleArena()
         val detailedArena = DetailedArena()
-
+        
+        // Create combat kit with config
+        val kitConfig = KitConfig()
+        val combatKit = CombatKit(kitConfig)
+        
         // Create manager (facade)
         manager = ArenaManager(
             simpleArena = simpleArena,
             detailedArena = detailedArena,
             clearer = clearer,
             yLevelChanger = yLevelChanger,
+            combatKit = combatKit,
             storage = storage,
             plugin = this
         )
@@ -69,7 +75,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
         } else {
             logger.info("${prefix}Arena already built. Skipping generation.")
         }
-
+        
         // Update spawn
         manager.updateSpawn(world)
 
@@ -82,8 +88,28 @@ class ArenaPlugin : JavaPlugin(), Listener {
 
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
+        val player = event.player
         val world = server.getWorld("world") ?: return
-        event.player.teleport(Location(world, 0.5, (manager.getCurrentBaseY() + 1).toDouble(), 0.5))
+        
+        // Teleport to spawn
+        player.teleport(Location(world, 0.5, (manager.getCurrentBaseY() + 1).toDouble(), 0.5))
+        
+        // Equip with combat kit on first join
+        manager.equipPlayer(player)
+        player.sendMessage("${prefix}Welcome to the arena! You received a combat kit.")
+    }
+    
+    @EventHandler
+    fun onPlayerRespawn(event: PlayerRespawnEvent) {
+        val player = event.player
+        val world = server.getWorld("world") ?: return
+        
+        // Set respawn location to arena spawn
+        event.respawnLocation = Location(world, 0.5, (manager.getCurrentBaseY() + 1).toDouble(), 0.5)
+        
+        // Equip with fresh combat kit on respawn
+        manager.equipPlayer(player)
+        player.sendMessage("${prefix}Respawned! Fresh combat kit equipped.")
     }
 
     override fun onCommand(
@@ -99,7 +125,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
             }
 
             if (args.isEmpty()) {
-                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> ]")
+                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> ]")
                 sender.sendMessage("${prefix}Current: base-y=${manager.getCurrentBaseY()}, type=${manager.getCurrentType().name.lowercase()}")
                 return true
             }
@@ -144,8 +170,35 @@ class ArenaPlugin : JavaPlugin(), Listener {
                     manager.updateSpawn(world)
                     sender.sendMessage("${prefix}Arena rebuilt at Y=$newY! Spawn updated.")
                 }
+                "restock" -> {
+                    // Get target player
+                    val targetPlayer: Player = if (args.size >= 2) {
+                        // Get player by name
+                        server.getPlayer(args[1]) ?: run {
+                            sender.sendMessage("${prefix}Error: Player '${args[1]}' not found or not online")
+                            return true
+                        }
+                    } else {
+                        // Use sender if they're a player
+                        if (sender is Player) {
+                            sender
+                        } else {
+                            sender.sendMessage("${prefix}Usage: /arena restock <player>")
+                            return true
+                        }
+                    }
+                    
+                    // Restock the player
+                    val success = manager.restockPlayer(targetPlayer)
+                    if (success) {
+                        sender.sendMessage("${prefix}Restocked ${targetPlayer.name} with 5 arrows and repaired bow")
+                        targetPlayer.sendMessage("${prefix}You have been restocked! Bow repaired, +5 arrows (max 10)")
+                    } else {
+                        sender.sendMessage("${prefix}Error: ${targetPlayer.name} does not have a bow")
+                    }
+                }
                 else -> {
-                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, or sety")
+                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, or restock")
                 }
             }
             return true

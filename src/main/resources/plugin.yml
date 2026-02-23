@@ -7,8 +7,8 @@ author: ArenaBuilder
 
 commands:
   arena:
-    description: Arena management commands
-    usage: /<command> [simple|detailed|rebuild]
+    description: Arena management and combat commands
+    usage: /<command> [simple|detailed|rebuild|sety <level>|restock <player>]
     permission: colosseum.arena.admin
     permission-message: You do not have permission to use this command.
 

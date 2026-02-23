@@ -3,7 +3,8 @@
 # After setup, edit server/server.properties directly
 
 server-port=25565
-gamemode=creative
+# Arena combat requires survival mode for arrows to deplete properly
+gamemode=survival
 difficulty=peaceful
 level-type=flat
 max-players=4
