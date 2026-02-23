@@ -1,5 +1,6 @@
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Properties
 
 plugins {
     kotlin("jvm") version "2.0.21"
@@ -35,6 +36,15 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     }
 }
 
+// Read existing version.properties (the source of truth)
+val versionPropsFile = file("src/main/resources/version.properties")
+val versionProps = Properties()
+
+// Load existing properties
+if (versionPropsFile.exists()) {
+    versionPropsFile.inputStream().use { versionProps.load(it) }
+}
+
 // Get git commit hash (short version)
 val gitHash: String by lazy {
     try {
@@ -52,13 +62,45 @@ val buildTime: String by lazy {
     SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
 }
 
-// Full version string: 1.0+abc1234 (SemVer style)
-val fullVersion = "1.0+$gitHash"
+// Update version.properties with build info (if git is available, otherwise keep committed values)
+// This modifies the file during build, but committed template remains as fallback
+if (gitHash != "unknown" && gitHash.isNotEmpty()) {
+    versionProps.setProperty("version", "1.0+$gitHash")
+    versionProps.setProperty("git.hash", gitHash)
+    versionProps.setProperty("build.time", buildTime)
+    
+    // Try to get branch name
+    val gitBranch: String by lazy {
+        try {
+            providers.exec {
+                commandLine("git", "rev-parse", "--abbrev-ref", "HEAD")
+                isIgnoreExitValue = true
+            }.standardOutput.asText.getOrElse("unknown").trim()
+        } catch (e: Exception) {
+            "unknown"
+        }
+    }
+    versionProps.setProperty("git.branch", gitBranch)
+    
+    // Write back to file
+    versionPropsFile.outputStream().use {
+        versionProps.store(it, "Updated by Gradle build - Do not edit manually")
+    }
+    
+    println("[BUILD] Updated version.properties with git info: 1.0+$gitHash")
+} else {
+    println("[BUILD] Git not available, using committed version.properties values")
+}
+
+// Get final version from properties
+val fullVersion = versionProps.getProperty("version", "1.0+unknown")
+val finalBuildTime = versionProps.getProperty("build.time", buildTime)
+val finalGitHash = versionProps.getProperty("git.hash", gitHash)
 
 // Print version info during build
 println("[BUILD] Version: $fullVersion")
-println("[BUILD] Time: $buildTime")
-println("[BUILD] Git Hash: $gitHash")
+println("[BUILD] Build Time: $finalBuildTime")
+println("[BUILD] Git Hash: $finalGitHash")
 
 tasks.jar {
     archiveFileName.set("colosseum-arena-1.0.jar")
@@ -76,21 +118,19 @@ tasks.jar {
         attributes(
             "Implementation-Version" to fullVersion,
             "Implementation-Title" to "ColosseumArena",
-            "Build-Time" to buildTime,
-            "Git-Commit" to gitHash
+            "Build-Time" to finalBuildTime,
+            "Git-Commit" to finalGitHash
         )
     }
 }
 
-// Process plugin.yml to inject version
+// Process plugin.yml - replace @VERSION@ with actual version
 tasks.processResources {
     // Replace tokens in plugin.yml
     filesMatching("plugin.yml") {
         filter<org.apache.tools.ant.filters.ReplaceTokens>(
             "tokens" to mapOf(
-                "VERSION" to fullVersion,
-                "BUILD_TIME" to buildTime,
-                "GIT_HASH" to gitHash
+                "VERSION" to fullVersion
             )
         )
     }
@@ -104,7 +144,6 @@ apply(from = "tasks/runServer.gradle.kts")
 apply(from = "tasks/cleanWorld.gradle.kts")
 
 // Full setup task that orchestrates the modular tasks
-// Arena configuration is in phau.properties (single source of truth)
 tasks.register("setup") {
     group = "setup"
     description = "Complete setup: validate Java, download Paper, build plugin, init server"
@@ -114,13 +153,13 @@ tasks.register("setup") {
     doFirst {
         println("[INFO] Starting server setup...")
         println("[INFO] Plugin Version: $fullVersion")
-        println("[INFO] Build Time: $buildTime")
+        println("[INFO] Build Time: $finalBuildTime")
         println("[INFO] Templates: templates/ -> server/")
     }
 
     doLast {
         println("[INFO] Setup complete!")
-        println("[INFO] Plugin built: $fullVersion ($buildTime)")
+        println("[INFO] Plugin built: $fullVersion ($finalBuildTime)")
         println("[INFO] Edit server/phau.properties to configure arena settings")
         println("[INFO] Edit server/server.properties for server settings")
         println("[INFO] Run './start-server.sh' to start")

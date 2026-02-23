@@ -23,6 +23,37 @@ import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerRespawnEvent
 import org.bukkit.plugin.java.JavaPlugin
+import java.util.Properties
+
+/**
+ * Version information data class
+ */
+data class VersionInfo(
+    val version: String,
+    val buildTime: String,
+    val gitHash: String,
+    val pluginName: String
+) {
+    companion object {
+        fun load(plugin: JavaPlugin): VersionInfo {
+            val props = Properties()
+            val stream = plugin.getResource("version.properties")
+            
+            return if (stream != null) {
+                props.load(stream)
+                VersionInfo(
+                    version = props.getProperty("version", "unknown"),
+                    buildTime = props.getProperty("build.time", "unknown"),
+                    gitHash = props.getProperty("git.hash", "unknown"),
+                    pluginName = props.getProperty("plugin.name", "ColosseumArena")
+                )
+            } else {
+                // Fallback if version.properties not found
+                VersionInfo("unknown", "unknown", "unknown", "ColosseumArena")
+            }
+        }
+    }
+}
 
 class ArenaPlugin : JavaPlugin(), Listener {
 
@@ -33,6 +64,9 @@ class ArenaPlugin : JavaPlugin(), Listener {
     
     // Arrow tracker for persistent arrows
     private var arrowTracker: ArrowTracker? = null
+    
+    // Version info loaded from version.properties
+    private val versionInfo by lazy { VersionInfo.load(this) }
 
     override fun onEnable() {
         logger.info("${prefix}Enabling Colosseum Arena Plugin...")
@@ -63,8 +97,10 @@ class ArenaPlugin : JavaPlugin(), Listener {
             return
         }
 
-        // Log version information
-        logger.info("${prefix}Version: ${pluginMeta.version}")
+        // Log version information from version.properties
+        logger.info("${prefix}Version: ${versionInfo.version}")
+        logger.info("${prefix}Built: ${versionInfo.buildTime}")
+        logger.info("${prefix}Git: ${versionInfo.gitHash}")
         logger.info("${prefix}Colosseum Arena Plugin enabled successfully!")
         arrowTracker?.let {
             logger.info("${prefix}Arrow system: Max ${it.getMaxAllowed()} arrows (${it.getArrowCount()} per player)")
@@ -178,7 +214,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 val currentMgr = manager
                 val currentTracker = arrowTracker
                 sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version ]")
-                sender.sendMessage("${prefix}Version: ${pluginMeta.version}")
+                sender.sendMessage("${prefix}Version: ${versionInfo.version}")
                 if (currentMgr != null) {
                     sender.sendMessage("${prefix}Current: base-y=${currentMgr.getCurrentBaseY()}, type=${currentMgr.getCurrentType().name.lowercase()}")
                 }
@@ -284,9 +320,11 @@ class ArenaPlugin : JavaPlugin(), Listener {
                     sender.sendMessage("  Rotation: Clockwise (E → S → W → N)")
                 }
                 "version" -> {
-                    // Show version info
-                    sender.sendMessage("${prefix}Colosseum Arena Plugin")
-                    sender.sendMessage("${prefix}Version: ${pluginMeta.version}")
+                    // Show version info from version.properties
+                    sender.sendMessage("${prefix}${versionInfo.pluginName}")
+                    sender.sendMessage("${prefix}Version: ${versionInfo.version}")
+                    sender.sendMessage("${prefix}Built: ${versionInfo.buildTime}")
+                    sender.sendMessage("${prefix}Commit: ${versionInfo.gitHash}")
                     sender.sendMessage("${prefix}API: Paper 1.21.4")
                     sender.sendMessage("${prefix}Java: ${System.getProperty("java.version")}")
                 }

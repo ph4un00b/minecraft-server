@@ -295,53 +295,119 @@ step5_setup_project() {
     log_info "Project files copied to $PROJECT_DIR"
 }
 
-# Step 5b: Verify Git Repository
-step5b_verify_git() {
-    log_step "Step 5b/11: Verifying Git repository..."
+# Step 5a: Ensure version.properties exists (recreate if missing)
+step5a_ensure_version_file() {
+    log_step "Step 5a/11: Ensuring version.properties exists..."
+    
+    local version_file="$PROJECT_DIR/src/main/resources/version.properties"
+    
+    # Check if version.properties exists
+    if [ -f "$version_file" ]; then
+        log_info "version.properties found"
+        return 0
+    fi
+    
+    log_warn "version.properties not found! Recreating..."
+    
+    # Ensure directory exists
+    mkdir -p "$PROJECT_DIR/src/main/resources"
+    
+    # Check if git is available and we're in a git repo
+    if command -v git &> /dev/null && [ -d "$PROJECT_DIR/.git" ]; then
+        log_info "Git available. Recreating from git data..."
+        
+        cd "$PROJECT_DIR"
+        
+        # Get git info
+        local git_hash=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        local git_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+        local build_time=$(date +"%Y-%m-%d %H:%M:%S")
+        
+        # Create version.properties with git data
+        cat > "$version_file" << EOF
+# Colosseum Arena Version Info
+# This file is the SOURCE OF TRUTH for version information
+# It is committed to git and serves as the base template
+# Gradle updates these values during build if git is available
+
+version=1.0+${git_hash}
+build.time=${build_time}
+git.hash=${git_hash}
+git.branch=${git_branch}
+EOF
+        
+        log_info "✓ Created version.properties from git data: 1.0+${git_hash}"
+        
+    else
+        log_warn "Git not available. Using default template..."
+        
+        # Create default template
+        cat > "$version_file" << 'EOF'
+# Colosseum Arena Version Info
+# This file is the SOURCE OF TRUTH for version information
+# It is committed to git and serves as the base template
+# Gradle updates these values during build if git is available
+
+version=1.0+unknown
+build.time=unknown
+git.hash=unknown
+git.branch=unknown
+EOF
+        
+        log_warn "✓ Created version.properties with default values (no git)"
+        log_warn "Plugin will show version: 1.0+unknown"
+    fi
+    
+    # Set ownership
+    chown "$USER:$USER" "$version_file"
+}
+
+# Step 5b: Verify Plugin Version in JAR
+step5b_verify_version() {
+    log_step "Step 5b/11: Verifying plugin version..."
     
     cd "$PROJECT_DIR"
     
-    # Check if .git directory exists
-    if [ ! -d "$PROJECT_DIR/.git" ]; then
-        log_error "Git repository not found at $PROJECT_DIR/.git"
-        log_error "Version tracking will not work!"
+    # Build just the plugin JAR (not full setup)
+    log_info "Building plugin to generate version info..."
+    su - "$USER" -c "cd $PROJECT_DIR && ./gradlew generateVersionFile jar --no-daemon --console=plain" || {
+        log_error "Build failed! Cannot verify version."
+        return 1
+    }
+    
+    # Check if JAR was created
+    if [ ! -f "$PROJECT_DIR/plugins/colosseum-arena-1.0.jar" ]; then
+        log_error "Plugin JAR not found at $PROJECT_DIR/plugins/colosseum-arena-1.0.jar"
         return 1
     fi
     
-    # Set proper ownership for .git directory
-    chown -R "$USER:$USER" "$PROJECT_DIR/.git"
-    
-    # Verify git works and show status
-    log_info "Git repository verified"
-    
-    # Get and display git info
-    local git_hash=$(su - "$USER" -c "cd $PROJECT_DIR && git rev-parse --short HEAD 2>/dev/null" || echo "unknown")
-    local git_status=$(su - "$USER" -c "cd $PROJECT_DIR && git status --short 2>/dev/null" || echo "error")
-    local last_commit=$(su - "$USER" -c "cd $PROJECT_DIR && git log -1 --format='%h - %s (%cr)' 2>/dev/null" || echo "unknown")
-    
-    echo ""
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  Git Repository Status${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo ""
-    echo -e "  Current Commit: ${GREEN}$git_hash${NC}"
-    echo -e "  Last Commit: ${GREEN}$last_commit${NC}"
-    echo ""
-    
-    if [ -n "$git_status" ] && [ "$git_status" != "error" ]; then
-        echo -e "  Working Directory: ${YELLOW}has uncommitted changes${NC}"
-        echo "  $git_status"
-    else
-        echo -e "  Working Directory: ${GREEN}clean${NC}"
+    # Verify JAR contains version.properties
+    if ! unzip -l "$PROJECT_DIR/plugins/colosseum-arena-1.0.jar" | grep -q "version.properties"; then
+        log_error "JAR missing version.properties!"
+        return 1
     fi
     
+    log_info "✓ JAR contains version.properties"
+    
+    # Extract and display version info from JAR
+    local version_info=$(unzip -p "$PROJECT_DIR/plugins/colosseum-arena-1.0.jar" version.properties 2>/dev/null)
+    local version=$(echo "$version_info" | grep "^version=" | cut -d'=' -f2)
+    local build_time=$(echo "$version_info" | grep "^build.time=" | cut -d'=' -f2)
+    local git_hash=$(echo "$version_info" | grep "^git.hash=" | cut -d'=' -f2)
+    
     echo ""
-    echo -e "  Plugin Version: ${GREEN}1.0+$git_hash${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}  Plugin Version Info${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo ""
+    echo -e "  Version: ${GREEN}${version:-unknown}${NC}"
+    echo -e "  Build Time: ${GREEN}${build_time:-unknown}${NC}"
+    echo -e "  Git Hash: ${GREEN}${git_hash:-unknown}${NC}"
     echo ""
     echo -e "${GREEN}========================================${NC}"
     echo ""
     
-    log_info "Git verification complete - Version will be: 1.0+$git_hash"
+    log_info "Plugin version verified: ${version:-unknown}"
 }
 
 # Step 6: Build project
@@ -863,7 +929,8 @@ main() {
     step3_create_user
     step4_check_project
     step5_setup_project
-    step5b_verify_git
+    step5a_ensure_version_file
+    step5b_verify_version
     step6_build_project
     step7_configure_server
     step8_firewall
