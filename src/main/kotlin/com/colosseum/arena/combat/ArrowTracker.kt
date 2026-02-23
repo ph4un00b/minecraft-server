@@ -1,42 +1,42 @@
 package com.colosseum.arena.combat
 
 import org.bukkit.Bukkit
+import org.bukkit.Material
 import org.bukkit.entity.Arrow
+import org.bukkit.entity.Item
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.entity.EntityPickupItemEvent
 import org.bukkit.event.entity.ProjectileHitEvent
 import org.bukkit.event.entity.ProjectileLaunchEvent
-import org.bukkit.event.player.PlayerPickupArrowEvent
 import org.bukkit.event.player.PlayerQuitEvent
+import org.bukkit.inventory.ItemStack
 import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.plugin.java.JavaPlugin
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Tracks persistent arrows in the arena
+ * Tracks persistent arrows in the arena using Paper API
+ * Converts arrows to items on impact
  * Enforces limit: 5 arrows per online player
- * Removes oldest arrows when limit exceeded
+ * Items have unlimited lifetime (never despawn)
  */
 class ArrowTracker(private val plugin: JavaPlugin) : Listener {
     
     companion object {
         private const val ARROWS_PER_PLAYER = 5
         private const val METADATA_KEY = "arena_arrow"
-        private const val METADATA_SHOOTER = "arena_shooter"
     }
     
-    // Track arrows with their timestamps (for age-based removal)
-    private val trackedArrows = ConcurrentHashMap<Arrow, Long>()
+    // Track item entities with their timestamps
+    private val trackedItems = ConcurrentHashMap<Item, Long>()
     
     init {
         // Register events
         Bukkit.getPluginManager().registerEvents(this, plugin)
         
-        // Start cleanup task to remove invalid arrows
-        Bukkit.getScheduler().runTaskTimer(plugin, Runnable {
-            cleanupInvalidArrows()
-        }, 20L, 20L) // Check every second
+        plugin.logger.info("[ArrowTracker] Initialized - Arrows convert to infinite-lifetime items")
     }
     
     /**
@@ -47,46 +47,75 @@ class ArrowTracker(private val plugin: JavaPlugin) : Listener {
         val projectile = event.entity
         
         // Only track arrows shot by players
-        if (projectile is Arrow && event.entity.shooter is Player) {
-            val shooter = event.entity.shooter as Player
-            
-            // Mark arrow with metadata
+        if (projectile is Arrow && projectile.shooter is Player) {
+            // Mark arrow with metadata so we know it's an arena arrow
             projectile.setMetadata(METADATA_KEY, FixedMetadataValue(plugin, true))
-            projectile.setMetadata(METADATA_SHOOTER, FixedMetadataValue(plugin, shooter.uniqueId.toString()))
         }
     }
     
     /**
      * Called when arrow hits something (ground/wall)
+     * Converts arrow to item with unlimited lifetime
      */
     @EventHandler
     fun onProjectileHit(event: ProjectileHitEvent) {
         val projectile = event.entity
         
-        // Only track arrows marked by our system
+        // Only convert arrows marked by our system
         if (projectile is Arrow && projectile.hasMetadata(METADATA_KEY)) {
-            // Add to tracking with timestamp
-            trackedArrows[projectile] = System.currentTimeMillis()
-            
-            // Note: Arrow entities in ground can't have pickupDelay set
-            // They persist until picked up naturally or removed by limit
-            // We rely on the fact that we're removing old arrows when limit is hit
-            
-            // Enforce limit
-            enforceArrowLimit()
+            // Convert to item
+            convertArrowToItem(projectile)
         }
     }
     
     /**
-     * Called when player picks up an arrow
+     * Convert arrow entity to item entity with unlimited lifetime
+     */
+    private fun convertArrowToItem(arrow: Arrow) {
+        val location = arrow.location
+        val world = location.world
+        
+        // Create arrow item stack
+        val itemStack = ItemStack(Material.ARROW, 1)
+        
+        // Spawn item entity
+        val item = world.dropItem(location, itemStack)
+        
+        // Configure item with Paper API unlimited lifetime
+        item.setUnlimitedLifetime(true)  // Native Paper API - item lives forever!
+        item.setWillAge(false)           // Don't age/despawn
+        item.setCanPlayerPickup(true)    // Allow player pickup
+        item.setCanMobPickup(false)      // Don't let mobs pick it up
+        item.pickupDelay = 0             // Can be picked up immediately
+        
+        // Let gravity work naturally (your requirement #1)
+        // item.setGravity(true) // This is default
+        
+        // Track the item
+        trackedItems[item] = System.currentTimeMillis()
+        
+        // Remove original arrow
+        arrow.remove()
+        
+        // Enforce limit
+        enforceArrowLimit()
+    }
+    
+    /**
+     * Called when player picks up an item
      */
     @EventHandler
-    fun onArrowPickup(event: PlayerPickupArrowEvent) {
-        val arrow = event.arrow
+    fun onItemPickup(event: EntityPickupItemEvent) {
+        val item = event.item
         
-        // Remove from tracking if it's our arrow
-        if (trackedArrows.containsKey(arrow)) {
-            trackedArrows.remove(arrow)
+        // Remove from tracking if it's our tracked arrow item
+        if (trackedItems.containsKey(item)) {
+            trackedItems.remove(item)
+            
+            // Debug logging
+            if (event.entity is Player) {
+                plugin.logger.fine("[ArrowTracker] ${event.entity.name} picked up an arrow")
+            }
         }
     }
     
@@ -103,77 +132,62 @@ class ArrowTracker(private val plugin: JavaPlugin) : Listener {
     
     /**
      * Enforce the arrow limit: 5 arrows per online player
-     * Removes oldest arrows first
+     * Removes oldest items first
      */
     private fun enforceArrowLimit() {
         val onlinePlayers = Bukkit.getOnlinePlayers().size
         val maxAllowed = onlinePlayers * ARROWS_PER_PLAYER
         
-        // Get current arrow count
-        val currentCount = trackedArrows.size
+        // Get current item count
+        val currentCount = trackedItems.size
         
         if (currentCount > maxAllowed) {
             // Sort by timestamp (oldest first)
-            val sortedArrows = trackedArrows.entries.sortedBy { it.value }
+            val sortedItems = trackedItems.entries.sortedBy { it.value }
             
-            // Remove excess arrows (oldest first)
+            // Remove excess items (oldest first)
             val toRemove = currentCount - maxAllowed
             for (i in 0 until toRemove) {
-                if (i < sortedArrows.size) {
-                    val arrow = sortedArrows[i].key
-                    removeArrow(arrow)
+                if (i < sortedItems.size) {
+                    val item = sortedItems[i].key
+                    removeItem(item)
                 }
             }
             
-            plugin.logger.info("[ArrowTracker] Removed $toRemove oldest arrows. Current: ${trackedArrows.size}/$maxAllowed")
+            plugin.logger.info("[ArrowTracker] Removed $toRemove oldest items. Current: ${trackedItems.size}/$maxAllowed")
         }
     }
     
     /**
-     * Remove a specific arrow from world and tracking
+     * Remove a specific item from world and tracking
      */
-    private fun removeArrow(arrow: Arrow) {
-        trackedArrows.remove(arrow)
-        if (!arrow.isDead) {
-            arrow.remove()
+    private fun removeItem(item: Item) {
+        trackedItems.remove(item)
+        if (!item.isDead) {
+            item.remove()
         }
     }
     
     /**
-     * Clean up invalid arrows (dead, picked up, or despawned)
+     * Get current item count
      */
-    private fun cleanupInvalidArrows() {
-        val invalidArrows = trackedArrows.keys.filter { arrow ->
-            arrow.isDead || !arrow.isValid || arrow.isOnGround.not()
-        }
-        
-        invalidArrows.forEach { trackedArrows.remove(it) }
-        
-        if (invalidArrows.isNotEmpty()) {
-            plugin.logger.fine("[ArrowTracker] Cleaned up ${invalidArrows.size} invalid arrows")
-        }
-    }
+    fun getArrowCount(): Int = trackedItems.size
     
     /**
-     * Get current arrow count
-     */
-    fun getArrowCount(): Int = trackedArrows.size
-    
-    /**
-     * Get maximum allowed arrows based on online players
+     * Get maximum allowed items based on online players
      */
     fun getMaxAllowed(): Int = Bukkit.getOnlinePlayers().size * ARROWS_PER_PLAYER
     
     /**
-     * Clear all tracked arrows (for arena rebuild)
+     * Clear all tracked items (for arena rebuild)
      */
     fun clearAllArrows() {
-        trackedArrows.keys.forEach { arrow ->
-            if (!arrow.isDead) {
-                arrow.remove()
+        trackedItems.keys.forEach { item ->
+            if (!item.isDead) {
+                item.remove()
             }
         }
-        trackedArrows.clear()
-        plugin.logger.info("[ArrowTracker] Cleared all arrows")
+        trackedItems.clear()
+        plugin.logger.info("[ArrowTracker] Cleared all arrow items")
     }
 }
