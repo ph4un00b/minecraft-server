@@ -63,6 +63,8 @@ class ArenaPlugin : JavaPlugin(), Listener {
             return
         }
 
+        // Log version information
+        logger.info("${prefix}Version: ${pluginMeta.version}")
         logger.info("${prefix}Colosseum Arena Plugin enabled successfully!")
         arrowTracker?.let {
             logger.info("${prefix}Arrow system: Max ${it.getMaxAllowed()} arrows (${it.getArrowCount()} per player)")
@@ -175,7 +177,8 @@ class ArenaPlugin : JavaPlugin(), Listener {
             if (args.isEmpty()) {
                 val currentMgr = manager
                 val currentTracker = arrowTracker
-                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows ]")
+                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version ]")
+                sender.sendMessage("${prefix}Version: ${pluginMeta.version}")
                 if (currentMgr != null) {
                     sender.sendMessage("${prefix}Current: base-y=${currentMgr.getCurrentBaseY()}, type=${currentMgr.getCurrentType().name.lowercase()}")
                 }
@@ -280,8 +283,15 @@ class ArenaPlugin : JavaPlugin(), Listener {
                     sender.sendMessage("  North: Lapis block marker")
                     sender.sendMessage("  Rotation: Clockwise (E → S → W → N)")
                 }
+                "version" -> {
+                    // Show version info
+                    sender.sendMessage("${prefix}Colosseum Arena Plugin")
+                    sender.sendMessage("${prefix}Version: ${pluginMeta.version}")
+                    sender.sendMessage("${prefix}API: Paper 1.21.4")
+                    sender.sendMessage("${prefix}Java: ${System.getProperty("java.version")}")
+                }
                 else -> {
-                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, restock, arrows, or spawns")
+                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, restock, arrows, spawns, or version")
                 }
             }
             return true

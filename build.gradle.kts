@@ -1,3 +1,6 @@
+import java.text.SimpleDateFormat
+import java.util.Date
+
 plugins {
     kotlin("jvm") version "2.0.21"
 }
@@ -32,6 +35,31 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     }
 }
 
+// Get git commit hash (short version)
+val gitHash: String by lazy {
+    try {
+        providers.exec {
+            commandLine("git", "rev-parse", "--short", "HEAD")
+            isIgnoreExitValue = true
+        }.standardOutput.asText.getOrElse("unknown").trim()
+    } catch (e: Exception) {
+        "unknown"
+    }
+}
+
+// Get build timestamp
+val buildTime: String by lazy {
+    SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
+}
+
+// Full version string: 1.0+abc1234 (SemVer style)
+val fullVersion = "1.0+$gitHash"
+
+// Print version info during build
+println("[BUILD] Version: $fullVersion")
+println("[BUILD] Time: $buildTime")
+println("[BUILD] Git Hash: $gitHash")
+
 tasks.jar {
     archiveFileName.set("colosseum-arena-1.0.jar")
     destinationDirectory.set(file("plugins"))
@@ -42,6 +70,30 @@ tasks.jar {
     })
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    
+    // Add build info to manifest
+    manifest {
+        attributes(
+            "Implementation-Version" to fullVersion,
+            "Implementation-Title" to "ColosseumArena",
+            "Build-Time" to buildTime,
+            "Git-Commit" to gitHash
+        )
+    }
+}
+
+// Process plugin.yml to inject version
+tasks.processResources {
+    // Replace tokens in plugin.yml
+    filesMatching("plugin.yml") {
+        filter<org.apache.tools.ant.filters.ReplaceTokens>(
+            "tokens" to mapOf(
+                "VERSION" to fullVersion,
+                "BUILD_TIME" to buildTime,
+                "GIT_HASH" to gitHash
+            )
+        )
+    }
 }
 
 // Apply modular tasks from tasks/ directory
@@ -61,11 +113,14 @@ tasks.register("setup") {
 
     doFirst {
         println("[INFO] Starting server setup...")
+        println("[INFO] Plugin Version: $fullVersion")
+        println("[INFO] Build Time: $buildTime")
         println("[INFO] Templates: templates/ -> server/")
     }
 
     doLast {
         println("[INFO] Setup complete!")
+        println("[INFO] Plugin built: $fullVersion ($buildTime)")
         println("[INFO] Edit server/phau.properties to configure arena settings")
         println("[INFO] Edit server/server.properties for server settings")
         println("[INFO] Run './start-server.sh' to start")
