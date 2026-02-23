@@ -12,20 +12,23 @@ import com.colosseum.arena.builders.SimpleArena
 import com.colosseum.arena.builders.DetailedArena
 import com.colosseum.arena.operations.ArenaClearer
 import com.colosseum.arena.operations.YLevelChanger
+import com.colosseum.arena.operations.PlayerSpawner
 import com.colosseum.arena.combat.CombatKit
+import com.colosseum.arena.combat.ArrowTracker
 import com.colosseum.core.storage.PropertiesStorage
 
 /**
  * Arena Manager - Facade for all arena operations
- * Contains ONLY PDC logic and delegation
- * All actual building logic is delegated to builders and operations
+ * Delegates spawn logic to PlayerSpawner
  */
 class ArenaManager(
     private val simpleArena: SimpleArena,
     private val detailedArena: DetailedArena,
     private val clearer: ArenaClearer,
     private val yLevelChanger: YLevelChanger,
+    private val playerSpawner: PlayerSpawner,
     private val combatKit: CombatKit,
+    private val arrowTracker: ArrowTracker,
     private val storage: PropertiesStorage,
     plugin: JavaPlugin
 ) {
@@ -33,8 +36,39 @@ class ArenaManager(
     private val arenaTypeKey = NamespacedKey(plugin, "arena_type")
 
     /**
+     * Get the next spawn point for a player
+     * Delegates to PlayerSpawner
+     */
+    fun getNextSpawnPoint(world: World): Location {
+        return playerSpawner.getNextSpawnPoint(world, storage.arenaBaseY)
+    }
+    
+    /**
+     * Build spawn point floor markers during arena construction
+     * Delegates to PlayerSpawner
+     */
+    fun buildSpawnMarkers(world: World) {
+        playerSpawner.buildSpawnMarkers(world, storage.arenaBaseY)
+    }
+    
+    /**
+     * Reset spawn rotation
+     * Delegates to PlayerSpawner
+     */
+    fun resetSpawnRotation() {
+        playerSpawner.resetRotation()
+    }
+    
+    /**
+     * Get spawn location name based on coordinates
+     * Delegates to PlayerSpawner
+     */
+    fun getSpawnLocationName(x: Int, z: Int): String {
+        return playerSpawner.getSpawnLocationName(x, z)
+    }
+
+    /**
      * Check if arena exists via PDC, build if not
-     * This is the ONLY logic in manager: PDC check
      */
     fun checkAndBuild(world: World): Boolean {
         val pdc = world.persistentDataContainer
@@ -46,6 +80,9 @@ class ArenaManager(
         // Build new arena
         val type = ArenaType.valueOf(storage.arenaType.uppercase())
         build(world, type)
+        
+        // Build spawn markers (delegated to PlayerSpawner)
+        buildSpawnMarkers(world)
 
         // Mark as built in PDC
         pdc.set(arenaBuiltKey, PersistentDataType.INTEGER, 1)
@@ -56,14 +93,22 @@ class ArenaManager(
 
     /**
      * Rebuild arena at current location
-     * Logic: clear → build → update PDC
      */
     fun rebuild(world: World, type: ArenaType) {
-        // Clear area
+        // Clear area blocks
         clearer.clear(world)
+        
+        // Clear all persistent arrows
+        arrowTracker.clearAllArrows()
 
         // Build new
         build(world, type)
+        
+        // Build spawn markers (delegated to PlayerSpawner)
+        buildSpawnMarkers(world)
+        
+        // Reset spawn rotation for fresh start
+        resetSpawnRotation()
 
         // Update PDC
         val pdc = world.persistentDataContainer
@@ -73,11 +118,9 @@ class ArenaManager(
 
     /**
      * Change Y level and rebuild
-     * Delegates sequence to YLevelChanger (Option A)
      */
     fun changeYLevel(world: World, newY: Int, type: ArenaType) {
         yLevelChanger.change(world, newY) {
-            // Callback: rebuild after Y is saved and area is cleared
             rebuild(world, type)
         }
     }
@@ -97,7 +140,7 @@ class ArenaManager(
     }
 
     /**
-     * Update spawn location to arena center
+     * Update spawn location to center (fallback only)
      */
     fun updateSpawn(world: World) {
         val spawnLocation = Location(world, 0.5, (storage.arenaBaseY + 1).toDouble(), 0.5)
@@ -113,7 +156,6 @@ class ArenaManager(
 
     /**
      * Equip player with combat kit
-     * Delegate to CombatKit
      */
     fun equipPlayer(player: Player) {
         combatKit.equipPlayer(player)
@@ -121,8 +163,6 @@ class ArenaManager(
 
     /**
      * Restock player with arrows and repair bow
-     * Delegate to CombatKit
-     * @return true if successful, false if player has no bow
      */
     fun restockPlayer(player: Player): Boolean {
         return combatKit.restockPlayer(player)

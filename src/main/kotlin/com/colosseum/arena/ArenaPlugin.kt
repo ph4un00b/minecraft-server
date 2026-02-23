@@ -1,6 +1,7 @@
 package com.colosseum.arena
 
 import com.colosseum.arena.domain.ArenaType
+import com.colosseum.arena.domain.SpawnPosition
 import com.colosseum.arena.manager.ArenaManager
 import com.colosseum.arena.builders.SimpleArena
 import com.colosseum.arena.builders.DetailedArena
@@ -8,6 +9,8 @@ import com.colosseum.arena.operations.ArenaClearer
 import com.colosseum.arena.operations.YLevelChanger
 import com.colosseum.arena.combat.CombatKit
 import com.colosseum.arena.combat.KitConfig
+import com.colosseum.arena.combat.ArrowTracker
+import com.colosseum.arena.operations.PlayerSpawner
 import com.colosseum.core.storage.PropertiesStorage
 import org.bukkit.Bukkit
 import org.bukkit.Location
@@ -25,39 +28,17 @@ class ArenaPlugin : JavaPlugin(), Listener {
 
     private val prefix = "\u001B[32m[ArenaPlugin]\u001B[0m "
     
-    // Arena manager - the facade
-    private lateinit var manager: ArenaManager
-
-    override fun onLoad() {
-        // Create storage
-        val storage = PropertiesStorage { msg -> logger.info("${prefix}$msg") }
-        
-        // Create operations
-        val clearer = ArenaClearer()
-        val yLevelChanger = YLevelChanger(storage, clearer)
-        
-        // Create builders (one instance each)
-        val simpleArena = SimpleArena()
-        val detailedArena = DetailedArena()
-        
-        // Create combat kit with config
-        val kitConfig = KitConfig()
-        val combatKit = CombatKit(kitConfig)
-        
-        // Create manager (facade)
-        manager = ArenaManager(
-            simpleArena = simpleArena,
-            detailedArena = detailedArena,
-            clearer = clearer,
-            yLevelChanger = yLevelChanger,
-            combatKit = combatKit,
-            storage = storage,
-            plugin = this
-        )
-    }
+    // Arena manager - the facade (initialized in onEnable)
+    private var manager: ArenaManager? = null
+    
+    // Arrow tracker for persistent arrows
+    private var arrowTracker: ArrowTracker? = null
 
     override fun onEnable() {
         logger.info("${prefix}Enabling Colosseum Arena Plugin...")
+        
+        // Initialize components in onEnable (safer than onLoad)
+        initializeComponents()
 
         server.pluginManager.registerEvents(this, this)
 
@@ -69,17 +50,70 @@ class ArenaPlugin : JavaPlugin(), Listener {
         }
 
         // Use manager to check and build
-        val wasBuilt = manager.checkAndBuild(world)
-        if (wasBuilt) {
-            logger.info("${prefix}Arena construction complete!")
-        } else {
-            logger.info("${prefix}Arena already built. Skipping generation.")
+        manager?.let { mgr ->
+            val wasBuilt = mgr.checkAndBuild(world)
+            if (wasBuilt) {
+                logger.info("${prefix}Arena construction complete with spawn markers!")
+            } else {
+                logger.info("${prefix}Arena already built. Skipping generation.")
+            }
+        } ?: run {
+            logger.severe("${prefix}Manager not initialized! Plugin disabled.")
+            server.pluginManager.disablePlugin(this)
+            return
         }
-        
-        // Update spawn
-        manager.updateSpawn(world)
 
         logger.info("${prefix}Colosseum Arena Plugin enabled successfully!")
+        arrowTracker?.let {
+            logger.info("${prefix}Arrow system: Max ${it.getMaxAllowed()} arrows (${it.getArrowCount()} per player)")
+        }
+    }
+    
+    /**
+     * Initialize all components
+     */
+    private fun initializeComponents() {
+        try {
+            // Create storage
+            val storage = PropertiesStorage { msg -> logger.info("${prefix}$msg") }
+            
+            // Create operations
+            val clearer = ArenaClearer()
+            val yLevelChanger = YLevelChanger(storage, clearer)
+            
+            // Create builders (one instance each)
+            val simpleArena = SimpleArena()
+            val detailedArena = DetailedArena()
+            
+            // Create combat kit with config
+            val kitConfig = KitConfig()
+            val combatKit = CombatKit(kitConfig)
+            
+            // Create arrow tracker (registers its own events)
+            arrowTracker = ArrowTracker(this)
+            
+            // Create player spawner (handles spawn points and rotation)
+            val playerSpawner = PlayerSpawner()
+            
+            // Create manager (facade)
+            manager = ArenaManager(
+                simpleArena = simpleArena,
+                detailedArena = detailedArena,
+                clearer = clearer,
+                yLevelChanger = yLevelChanger,
+                playerSpawner = playerSpawner,
+                combatKit = combatKit,
+                arrowTracker = arrowTracker!!,
+                storage = storage,
+                plugin = this
+            )
+            
+            logger.info("${prefix}Components initialized successfully")
+        } catch (e: Exception) {
+            logger.severe("${prefix}Failed to initialize components: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
     }
 
     override fun onDisable() {
@@ -90,26 +124,40 @@ class ArenaPlugin : JavaPlugin(), Listener {
     fun onPlayerJoin(event: PlayerJoinEvent) {
         val player = event.player
         val world = server.getWorld("world") ?: return
+        val mgr = manager ?: return
         
-        // Teleport to spawn
-        player.teleport(Location(world, 0.5, (manager.getCurrentBaseY() + 1).toDouble(), 0.5))
+        // Get next spawn point (rotates: E, S, W, N)
+        val spawnLoc = mgr.getNextSpawnPoint(world)
+        val spawnName = mgr.getSpawnLocationName(spawnLoc.blockX, spawnLoc.blockZ)
         
-        // Equip with combat kit on first join
-        manager.equipPlayer(player)
+        // Teleport to assigned spawn
+        player.teleport(spawnLoc)
+        
+        // Equip with combat kit
+        mgr.equipPlayer(player)
+        
         player.sendMessage("${prefix}Welcome to the arena! You received a combat kit.")
+        player.sendMessage("${prefix}Spawned at: $spawnName. Arrows are limited - pick them up!")
     }
     
     @EventHandler
     fun onPlayerRespawn(event: PlayerRespawnEvent) {
         val player = event.player
         val world = server.getWorld("world") ?: return
+        val mgr = manager ?: return
         
-        // Set respawn location to arena spawn
-        event.respawnLocation = Location(world, 0.5, (manager.getCurrentBaseY() + 1).toDouble(), 0.5)
+        // Get next spawn point for respawn
+        val spawnLoc = mgr.getNextSpawnPoint(world)
+        val spawnName = mgr.getSpawnLocationName(spawnLoc.blockX, spawnLoc.blockZ)
         
-        // Equip with fresh combat kit on respawn
-        manager.equipPlayer(player)
-        player.sendMessage("${prefix}Respawned! Fresh combat kit equipped.")
+        // Set respawn location
+        event.respawnLocation = spawnLoc
+        
+        // Equip with fresh combat kit
+        mgr.equipPlayer(player)
+        
+        player.sendMessage("${prefix}Respawned at: $spawnName! Fresh combat kit equipped.")
+        player.sendMessage("${prefix}Pick up arrows from the ground to restock!")
     }
 
     override fun onCommand(
@@ -125,8 +173,16 @@ class ArenaPlugin : JavaPlugin(), Listener {
             }
 
             if (args.isEmpty()) {
-                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> ]")
-                sender.sendMessage("${prefix}Current: base-y=${manager.getCurrentBaseY()}, type=${manager.getCurrentType().name.lowercase()}")
+                val currentMgr = manager
+                val currentTracker = arrowTracker
+                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows ]")
+                if (currentMgr != null) {
+                    sender.sendMessage("${prefix}Current: base-y=${currentMgr.getCurrentBaseY()}, type=${currentMgr.getCurrentType().name.lowercase()}")
+                }
+                if (currentTracker != null) {
+                    sender.sendMessage("${prefix}Arrows: ${currentTracker.getArrowCount()}/${currentTracker.getMaxAllowed()} (5 per player)")
+                }
+                sender.sendMessage("${prefix}Spawn rotation: East → South → West → North (clockwise)")
                 return true
             }
 
@@ -136,27 +192,32 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 return true
             }
 
+            val currentMgr = manager ?: run {
+                sender.sendMessage("${prefix}Error: Plugin not fully initialized")
+                return true
+            }
+
             when (args[0].lowercase()) {
                 "simple" -> {
-                    sender.sendMessage("${prefix}Building simple arena...")
-                    manager.rebuild(world, ArenaType.SIMPLE)
-                    sender.sendMessage("${prefix}Simple arena built! Saved to phau.properties")
+                    sender.sendMessage("${prefix}Building simple arena with spawn markers...")
+                    currentMgr.rebuild(world, ArenaType.SIMPLE)
+                    sender.sendMessage("${prefix}Simple arena built! Spawns at E/S/W/N inner edge")
                 }
                 "detailed" -> {
-                    sender.sendMessage("${prefix}Building detailed gothic arena...")
-                    manager.rebuild(world, ArenaType.DETAILED)
-                    sender.sendMessage("${prefix}Detailed gothic arena built! Saved to phau.properties")
+                    sender.sendMessage("${prefix}Building detailed gothic arena with spawn markers...")
+                    currentMgr.rebuild(world, ArenaType.DETAILED)
+                    sender.sendMessage("${prefix}Detailed arena built! Spawns at E/S/W/N inner edge")
                 }
                 "rebuild" -> {
-                    val currentType = manager.getCurrentType()
+                    val currentType = currentMgr.getCurrentType()
                     sender.sendMessage("${prefix}Rebuilding arena (type: ${currentType.name.lowercase()})...")
-                    manager.rebuild(world, currentType)
-                    sender.sendMessage("${prefix}Arena rebuilt!")
+                    currentMgr.rebuild(world, currentType)
+                    sender.sendMessage("${prefix}Arena rebuilt! Spawn markers restored.")
                 }
                 "sety" -> {
                     if (args.size < 2) {
                         sender.sendMessage("${prefix}Usage: /arena sety <y-level>")
-                        sender.sendMessage("${prefix}Current Y level: ${manager.getCurrentBaseY()}")
+                        sender.sendMessage("${prefix}Current Y level: ${currentMgr.getCurrentBaseY()}")
                         return true
                     }
                     val newY = args[1].toIntOrNull()
@@ -164,11 +225,10 @@ class ArenaPlugin : JavaPlugin(), Listener {
                         sender.sendMessage("${prefix}Error: Y level must be between 0 and 255")
                         return true
                     }
-                    val oldY = manager.getCurrentBaseY()
+                    val oldY = currentMgr.getCurrentBaseY()
                     sender.sendMessage("${prefix}Changing arena base Y from $oldY to $newY...")
-                    manager.changeYLevel(world, newY, manager.getCurrentType())
-                    manager.updateSpawn(world)
-                    sender.sendMessage("${prefix}Arena rebuilt at Y=$newY! Spawn updated.")
+                    currentMgr.changeYLevel(world, newY, currentMgr.getCurrentType())
+                    sender.sendMessage("${prefix}Arena rebuilt at Y=$newY! Spawn markers updated.")
                 }
                 "restock" -> {
                     // Get target player
@@ -189,7 +249,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
                     }
                     
                     // Restock the player
-                    val success = manager.restockPlayer(targetPlayer)
+                    val success = currentMgr.restockPlayer(targetPlayer)
                     if (success) {
                         sender.sendMessage("${prefix}Restocked ${targetPlayer.name} with 5 arrows and repaired bow")
                         targetPlayer.sendMessage("${prefix}You have been restocked! Bow repaired, +5 arrows (max 10)")
@@ -197,8 +257,31 @@ class ArenaPlugin : JavaPlugin(), Listener {
                         sender.sendMessage("${prefix}Error: ${targetPlayer.name} does not have a bow")
                     }
                 }
+                "arrows" -> {
+                    // Show arrow status
+                    val currentTracker = arrowTracker
+                    if (currentTracker != null) {
+                        sender.sendMessage("${prefix}Arrow Status:")
+                        sender.sendMessage("  Tracked arrows: ${currentTracker.getArrowCount()}")
+                        sender.sendMessage("  Max allowed: ${currentTracker.getMaxAllowed()} (5 per player)")
+                        sender.sendMessage("  Online players: ${Bukkit.getOnlinePlayers().size}")
+                        sender.sendMessage("  Arrows persist until picked up")
+                    } else {
+                        sender.sendMessage("${prefix}Arrow tracker not initialized")
+                    }
+                }
+                "spawns" -> {
+                    // Show spawn info
+                    sender.sendMessage("${prefix}Spawn System:")
+                    sender.sendMessage("  4 fixed positions at inner edge (radius 12)")
+                    sender.sendMessage("  East: Gold block marker")
+                    sender.sendMessage("  South: Diamond block marker")
+                    sender.sendMessage("  West: Emerald block marker")
+                    sender.sendMessage("  North: Lapis block marker")
+                    sender.sendMessage("  Rotation: Clockwise (E → S → W → N)")
+                }
                 else -> {
-                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, or restock")
+                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, restock, arrows, or spawns")
                 }
             }
             return true
