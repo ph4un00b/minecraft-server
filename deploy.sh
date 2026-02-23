@@ -264,7 +264,6 @@ step5_setup_project() {
     
     if command -v rsync &> /dev/null; then
         rsync -av --delete \
-            --exclude='.git' \
             --exclude='.gradle' \
             --exclude='build' \
             --exclude='.kotlin' \
@@ -277,7 +276,8 @@ step5_setup_project() {
         rm -rf "$PROJECT_DIR"
         mkdir -p "$PROJECT_DIR"
         cp -r . "$PROJECT_DIR/"
-        rm -rf "$PROJECT_DIR/.git" "$PROJECT_DIR/.gradle" "$PROJECT_DIR/build" 2>/dev/null || true
+        # Keep .git but remove other build dirs
+        rm -rf "$PROJECT_DIR/.gradle" "$PROJECT_DIR/build" 2>/dev/null || true
     fi
     
     # Create necessary directories
@@ -293,6 +293,55 @@ step5_setup_project() {
     chmod +x "$PROJECT_DIR/scripts/"*.sh
     
     log_info "Project files copied to $PROJECT_DIR"
+}
+
+# Step 5b: Verify Git Repository
+step5b_verify_git() {
+    log_step "Step 5b/11: Verifying Git repository..."
+    
+    cd "$PROJECT_DIR"
+    
+    # Check if .git directory exists
+    if [ ! -d "$PROJECT_DIR/.git" ]; then
+        log_error "Git repository not found at $PROJECT_DIR/.git"
+        log_error "Version tracking will not work!"
+        return 1
+    fi
+    
+    # Set proper ownership for .git directory
+    chown -R "$USER:$USER" "$PROJECT_DIR/.git"
+    
+    # Verify git works and show status
+    log_info "Git repository verified"
+    
+    # Get and display git info
+    local git_hash=$(su - "$USER" -c "cd $PROJECT_DIR && git rev-parse --short HEAD 2>/dev/null" || echo "unknown")
+    local git_status=$(su - "$USER" -c "cd $PROJECT_DIR && git status --short 2>/dev/null" || echo "error")
+    local last_commit=$(su - "$USER" -c "cd $PROJECT_DIR && git log -1 --format='%h - %s (%cr)' 2>/dev/null" || echo "unknown")
+    
+    echo ""
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}  Git Repository Status${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo ""
+    echo -e "  Current Commit: ${GREEN}$git_hash${NC}"
+    echo -e "  Last Commit: ${GREEN}$last_commit${NC}"
+    echo ""
+    
+    if [ -n "$git_status" ] && [ "$git_status" != "error" ]; then
+        echo -e "  Working Directory: ${YELLOW}has uncommitted changes${NC}"
+        echo "  $git_status"
+    else
+        echo -e "  Working Directory: ${GREEN}clean${NC}"
+    fi
+    
+    echo ""
+    echo -e "  Plugin Version: ${GREEN}1.0+$git_hash${NC}"
+    echo ""
+    echo -e "${GREEN}========================================${NC}"
+    echo ""
+    
+    log_info "Git verification complete - Version will be: 1.0+$git_hash"
 }
 
 # Step 6: Build project
@@ -814,6 +863,7 @@ main() {
     step3_create_user
     step4_check_project
     step5_setup_project
+    step5b_verify_git
     step6_build_project
     step7_configure_server
     step8_firewall
