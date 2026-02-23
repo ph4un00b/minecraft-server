@@ -30,7 +30,7 @@ If Java 21 is not installed, the setup will fail with:
 
 ## Quick Start
 
-### Linux / macOS
+### Local Development (Linux / macOS)
 
 ```bash
 # Setup (edit templates/phau.properties first to choose arena type)
@@ -48,6 +48,36 @@ scripts\setup.bat
 
 REM Start the server
 scripts\start-server.bat
+```
+
+### Ubuntu Server Deployment
+
+**One-command automated deployment:**
+
+```bash
+# Upload deploy.sh to your Ubuntu server, then run:
+chmod +x deploy.sh
+./deploy.sh --ram=2G --port=25565
+```
+
+**Requirements:**
+- Ubuntu 20.04/22.04/24.04 LTS
+- 2GB+ RAM (4GB recommended)
+- Root access
+
+The script automatically installs Java 21, configures firewall, creates systemd service, and starts the server. See [DEPLOY.md](DEPLOY.md) for detailed instructions.
+
+**Note on Architecture:** The deploy script uses a hybrid approach for optimal performance:
+- **Setup phase**: Uses Gradle tasks (`./gradlew setup`) to build the plugin and download Paper
+- **Runtime**: Uses **direct Java** (not Gradle) to run the server for better performance and lower memory overhead
+- This is intentional: Gradle adds ~100-200MB overhead which is significant for 1GB RAM systems
+
+**After deployment, manage with:**
+```bash
+mcserver start      # Start server
+mcserver stop       # Stop server
+mcserver logs       # View real-time logs
+mcserver backup     # Backup world data
 ```
 
 ## Arena Types
