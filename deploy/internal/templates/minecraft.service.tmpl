@@ -1,0 +1,19 @@
+[Unit]
+Description=Minecraft Colosseum Arena Server
+After=network.target
+
+[Service]
+Type=simple
+User={{.User}}
+Group={{.User}}
+WorkingDirectory={{.ProjectDir}}/server
+ExecStart={{.ProjectDir}}/scripts/start-server.sh
+Restart=on-failure
+RestartSec=10
+StandardInput=null
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=minecraft
+
+[Install]
+WantedBy=multi-user.target

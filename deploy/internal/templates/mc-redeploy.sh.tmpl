@@ -1,0 +1,10 @@
+#!/bin/bash
+# Quick redeploy shortcut
+
+if [ ! -f "deploy" ]; then
+    echo "Error: deploy binary not found in current directory"
+    echo "Please run this from the project root"
+    exit 1
+fi
+
+sudo ./deploy --redeploy --ram={{.RAM}} --port={{.Port}}

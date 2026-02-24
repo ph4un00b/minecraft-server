@@ -1,0 +1,150 @@
+#!/bin/bash
+# Minecraft Server Management Script
+
+USER="{{.User}}"
+PROJECT_DIR="/home/$USER/colosseum-arena"
+
+show_help() {
+    echo "Usage: mcserver [command]"
+    echo ""
+    echo "Commands:"
+    echo "  start       Start the Minecraft server"
+    echo "  stop        Stop the Minecraft server"
+    echo "  restart     Restart the Minecraft server"
+    echo "  status      Check server status"
+    echo "  logs        View server logs (follow mode)"
+    echo "  log         View last 50 log lines"
+    echo "  console     Attach to server console (screen)"
+    echo "  backup      Backup world data"
+    echo "  fix         Kill server processes and fix locks"
+    echo "  redeploy    Stop, clean, rebuild, and restart"
+    echo "  update      Update plugin only (quick redeploy)"
+    echo "  help        Show this help message"
+}
+
+case "$1" in
+    start)
+        sudo systemctl start minecraft
+        echo "Server started"
+        ;;
+    stop)
+        echo "Stopping server..."
+        sudo systemctl stop minecraft
+        sleep 2
+        echo "Server stopped"
+        ;;
+    restart)
+        echo "Restarting server..."
+        sudo systemctl restart minecraft
+        echo "Server restarted"
+        ;;
+    status)
+        sudo systemctl status minecraft --no-pager
+        ;;
+    logs)
+        echo "Following logs (Ctrl+C to exit)..."
+        sudo journalctl -u minecraft -f
+        ;;
+    log)
+        sudo journalctl -u minecraft -n 50 --no-pager
+        ;;
+    console)
+        if sudo -u "$USER" screen -list | grep -q "minecraft"; then
+            echo "Attaching to console... (Ctrl+A then D to detach)"
+            sleep 1
+            sudo -u "$USER" screen -r minecraft
+        else
+            echo "Starting console in screen..."
+            sudo -u "$USER" screen -S minecraft -d -m bash -c "cd $PROJECT_DIR && ./scripts/start-server.sh"
+            sleep 2
+            sudo -u "$USER" screen -r minecraft
+        fi
+        ;;
+    backup)
+        BACKUP_DIR="/home/$USER/backups"
+        mkdir -p "$BACKUP_DIR"
+        BACKUP_FILE="$BACKUP_DIR/world-$(date +%Y%m%d-%H%M%S).tar.gz"
+        echo "Creating backup: $BACKUP_FILE"
+        if sudo systemctl is-active --quiet minecraft; then
+            echo "Server is running. Creating live backup..."
+        fi
+        sudo tar -czf "$BACKUP_FILE" -C "$PROJECT_DIR/server" world/ 2>/dev/null || {
+            echo "Warning: Some files may have changed during backup"
+        }
+        echo "Backup complete: $BACKUP_FILE"
+        du -h "$BACKUP_FILE"
+        ;;
+    fix)
+        echo "Killing server processes and fixing locks..."
+        sudo systemctl stop minecraft 2>/dev/null || true
+        sudo pkill -9 -f "paper-1.21.4.jar" 2>/dev/null || true
+        sudo pkill -9 java 2>/dev/null || true
+        sleep 2
+        sudo rm -f "$PROJECT_DIR/server/world/session.lock" 2>/dev/null || true
+        sudo rm -f "$PROJECT_DIR/server/world_nether/session.lock" 2>/dev/null || true
+        sudo rm -f "$PROJECT_DIR/server/world_the_end/session.lock" 2>/dev/null || true
+        echo "Locks cleared. You can now start the server with: mcserver start"
+        ;;
+    redeploy)
+        echo "=== REDEPLOYING SERVER ==="
+        echo "This will stop the server, clean build files, rebuild, and restart."
+        read -p "Are you sure? (y/N) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "Stopping server..."
+            sudo systemctl stop minecraft
+            sudo pkill -9 java 2>/dev/null || true
+            sleep 2
+            
+            echo "Cleaning and rebuilding..."
+            cd "$PROJECT_DIR" || exit 1
+            sudo -u "$USER" rm -rf build .gradle 2>/dev/null || true
+            sudo -u "$USER" ./gradlew clean setup --no-daemon --console=plain || {
+                echo "Build failed!"
+                exit 1
+            }
+            
+            echo "Starting server..."
+            sudo systemctl start minecraft
+            sleep 3
+            sudo systemctl status minecraft --no-pager
+        else
+            echo "Redeploy cancelled"
+        fi
+        ;;
+    update)
+        echo "=== QUICK UPDATE (Plugin Only) ==="
+        echo "This updates just the plugin JAR and restarts."
+        read -p "Continue? (y/N) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "Stopping server..."
+            sudo systemctl stop minecraft
+            sleep 2
+            
+            echo "Rebuilding plugin..."
+            cd "$PROJECT_DIR" || exit 1
+            sudo -u "$USER" ./gradlew clean jar --no-daemon --console=plain || {
+                echo "Build failed!"
+                exit 1
+            }
+            
+            echo "Copying new JAR..."
+            sudo cp "$PROJECT_DIR/plugins/colosseum-arena-1.0.jar" "$PROJECT_DIR/server/plugins/"
+            sudo chown "$USER:$USER" "$PROJECT_DIR/server/plugins/colosseum-arena-1.0.jar"
+            
+            echo "Starting server..."
+            sudo systemctl start minecraft
+            echo "Update complete!"
+        else
+            echo "Update cancelled"
+        fi
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    *)
+        show_help
+        exit 1
+        ;;
+esac
