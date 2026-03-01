@@ -1,6 +1,7 @@
 package com.colosseum.arena
 
 import com.colosseum.arena.domain.ArenaType
+import com.colosseum.arena.domain.NPCAttackType
 import com.colosseum.arena.domain.SpawnPosition
 import com.colosseum.arena.manager.ArenaManager
 import org.bukkit.Bukkit
@@ -269,7 +270,7 @@ override fun onCommand(
             if (args.isEmpty()) {
                 val currentMgr = manager
                 val currentTracker = manager?.arrowTracker
-                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version | npcs | toggleNPCs | setNPCHealth <health> | setNPCDamage <damage> | setNPCCount <count> ]")
+                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version | npcs | toggleNPCs | setNPCHealth <health> | setNPCDamage <damage> | setNPCCount <count> | setNPCAttack <arrow|fireball> ]")
                 sender.sendMessage("${prefix}Version: ${versionInfo.version}")
                 if (currentMgr != null) {
                     sender.sendMessage("${prefix}Current: base-y=${currentMgr.getCurrentBaseY()}, type=${currentMgr.getCurrentType().name.lowercase()}")
@@ -393,7 +394,7 @@ override fun onCommand(
                 "npcs" -> {
                     sender.sendMessage("${prefix}NPC System:")
                     sender.sendMessage("  ${manager?.npcManager?.getNPCStatus()}")
-                    sender.sendMessage("  Use: /arena toggleNPCs, /arena setNPCHealth <health>, /arena setNPCDamage <damage>, /arena setNPCCount <count>")
+                    sender.sendMessage("  Use: /arena toggleNPCs, /arena setNPCHealth <health>, /arena setNPCDamage <damage>, /arena setNPCCount <count>, /arena setNPCAttack <arrow|fireball>")
                 }
                 "toggleNPCs" -> {
                     manager?.npcManager?.toggleNPCs()
@@ -441,8 +442,27 @@ override fun onCommand(
                     manager?.npcManager?.setNPCCount(newCount)
                     sender.sendMessage("${prefix}NPC count set to $newCount")
                 }
+                "setnpcattack" -> {
+                    if (args.size < 2) {
+                        sender.sendMessage("${prefix}Usage: /arena setNPCAttack <arrow|fireball>")
+                        sender.sendMessage("${prefix}Current NPC attack type: ${manager?.npcManager?.getNPCAttackType()}")
+                        return true
+                    }
+                    logger.info("${prefix}Command setNPCAttack received with arg: ${args[1]}")
+                    val attackType = when (args[1].lowercase()) {
+                        "arrow" -> NPCAttackType.SPECTRAL_ARROW
+                        "fireball" -> NPCAttackType.FIREBALL
+                        else -> {
+                            sender.sendMessage("${prefix}Error: Attack type must be 'arrow' or 'fireball'")
+                            return true
+                        }
+                    }
+                    logger.info("${prefix}Parsed attack type: $attackType, calling setNPCAttackType...")
+                    manager?.npcManager?.setNPCAttackType(attackType)
+                    sender.sendMessage("${prefix}NPC attack type set to $attackType (rebuild arena to apply)")
+                }
                 else -> {
-                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, restock, arrows, spawns, version, npcs, toggleNPCs, setNPCHealth, setNPCDamage, or setNPCCount")
+                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, restock, arrows, spawns, version, npcs, toggleNPCs, setNPCHealth, setNPCDamage, setNPCCount, or setNPCAttack")
                 }
             }
             return true
