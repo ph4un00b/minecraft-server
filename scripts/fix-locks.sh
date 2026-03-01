@@ -11,7 +11,7 @@ fi
 echo "[INFO] Fixing server locks..."
 
 # Kill any running Java processes
-pkill -9 -f "paper-1.21.4.jar" 2>/dev/null || true
+pkill -9 -f "paper-1.21.11.jar" 2>/dev/null || true
 pkill -9 java 2>/dev/null || true
 sleep 2
 

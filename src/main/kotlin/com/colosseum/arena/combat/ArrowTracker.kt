@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.colosseum.arena.combat
 
 import org.bukkit.Bukkit
@@ -42,6 +44,7 @@ class ArrowTracker(private val plugin: JavaPlugin) : Listener {
     /**
      * Called when a projectile is launched
      */
+    @Suppress("DEPRECATION")
     @EventHandler
     fun onProjectileLaunch(event: ProjectileLaunchEvent) {
         val projectile = event.entity

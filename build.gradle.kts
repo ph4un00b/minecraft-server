@@ -17,7 +17,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly("net.citizensnpcs:citizens-main:2.0.37-SNAPSHOT")
     compileOnly("org.mcmonkey:sentinel:2.9.3-SNAPSHOT")
     implementation(kotlin("stdlib"))

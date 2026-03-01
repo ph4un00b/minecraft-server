@@ -10,12 +10,12 @@ tasks.register("downloadPlugins") {
     doLast {
         file("server/plugins").mkdirs()
         
-        // Download Citizens - build 4129 (latest stable)
+        // Download Citizens - build 4129 (latest, compatible with Paper 1.21.11+)
         val citizensUrl = "https://ci.citizensnpcs.co/job/Citizens2/4129/artifact/dist/target/Citizens-2.0.41-b4129.jar"
         val citizensFile = file("server/plugins/Citizens.jar")
         
         if (!citizensFile.exists()) {
-            println("[INFO] Downloading Citizens build 4129...")
+            println("[INFO] Downloading Citizens build 4129 (latest, 1.21.11+ compatible)...")
             try {
                 downloadFile(citizensUrl, citizensFile)
                 println("[INFO] Citizens downloaded successfully to server/plugins/Citizens.jar")

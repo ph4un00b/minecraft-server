@@ -20,7 +20,7 @@ tasks.register<Exec>("setupServer") {
         
         // Copy Paper to server
         copy {
-            from("external/paper-1.21.4.jar")
+            from("external/paper-1.21.11.jar")
             into("server")
         }
         
@@ -59,7 +59,7 @@ tasks.register<Exec>("setupServer") {
         println("[INFO] Server files prepared")
     }
     
-    commandLine("java", "-jar", "paper-1.21.4.jar", "--initSettings")
+    commandLine("java", "-jar", "paper-1.21.11.jar", "--initSettings")
     
     doLast {
         // Accept EULA

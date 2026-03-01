@@ -44,7 +44,7 @@ tasks.register<Exec>("runServer") {
         "-XX:G1HeapWastePercent=5",
         "-Dpaper.disableWatchdog=true",
         "-Djava.awt.headless=true",
-        "-jar", "paper-1.21.4.jar",
+        "-jar", "paper-1.21.11.jar",
         "--nogui"
     )
 }

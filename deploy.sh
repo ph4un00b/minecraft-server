@@ -237,7 +237,7 @@ step5_setup_project() {
         
         # Stop server if running
         systemctl stop minecraft 2>/dev/null || true
-        pkill -9 -f "paper-1.21.4.jar" 2>/dev/null || true
+        pkill -9 -f "paper-1.21.11.jar" 2>/dev/null || true
         sleep 2
         
         # Backup world if it exists
@@ -664,7 +664,7 @@ exec java $JVM_ARGS \\
     -XX:G1HeapWastePercent=5 \\
     -Dpaper.disableWatchdog=true \\
     -Djava.awt.headless=true \\
-    -jar paper-1.21.4.jar \\
+    -jar paper-1.21.11.jar \\
     --nogui
 EOF
 
@@ -757,7 +757,7 @@ case "$1" in
     fix)
         echo "Killing server processes and fixing locks..."
         sudo systemctl stop minecraft 2>/dev/null || true
-        sudo pkill -9 -f "paper-1.21.4.jar" 2>/dev/null || true
+        sudo pkill -9 -f "paper-1.21.11.jar" 2>/dev/null || true
         sudo pkill -9 java 2>/dev/null || true
         sleep 2
         sudo rm -f "$PROJECT_DIR/server/world/session.lock" 2>/dev/null || true
