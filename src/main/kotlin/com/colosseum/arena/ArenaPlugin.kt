@@ -2,6 +2,7 @@ package com.colosseum.arena
 
 import com.colosseum.arena.commands.ArenaCommand
 import com.colosseum.arena.commands.BuildCommands
+import com.colosseum.arena.commands.CommandSuggestion
 import com.colosseum.arena.commands.InfoCommands
 import com.colosseum.arena.commands.NPCCommands
 import com.colosseum.arena.commands.PlayerCommands
@@ -297,7 +298,12 @@ override fun onCommand(
 
             val cmd = ArenaCommand.fromString(args[0])
             if (cmd == null) {
-                sender.sendMessage("${prefix}${ArenaCommand.generateUnknownOptionMessage()}")
+                val suggestion = CommandSuggestion.suggestSimilar(args[0])
+                if (suggestion != null) {
+                    sender.sendMessage("${prefix}Unknown command '${args[0]}'. Did you mean '${suggestion}'?")
+                } else {
+                    sender.sendMessage("${prefix}${ArenaCommand.generateUnknownOptionMessage()}")
+                }
                 return true
             }
 
@@ -331,5 +337,32 @@ override fun onCommand(
             return true
         }
         return false
+    }
+
+    override fun onTabComplete(
+        sender: CommandSender,
+        command: Command,
+        alias: String,
+        args: Array<String>
+    ): List<String>? {
+        if (command.name != "arena") return null
+
+        return when (args.size) {
+            1 -> ArenaCommand.entries
+                .map { it.primaryName }
+                .filter { it.startsWith(args[0].lowercase()) }
+            2 -> when (ArenaCommand.fromString(args[0])) {
+                ArenaCommand.RESTOCK -> server.onlinePlayers
+                    .map { it.name }
+                    .filter { it.startsWith(args[1], ignoreCase = true) }
+                ArenaCommand.SET_NPC_ATTACK -> listOf("arrow", "fireball")
+                    .filter { it.startsWith(args[1].lowercase()) }
+                ArenaCommand.SET_NPC_COUNT -> listOf("0", "1", "2", "3", "4")
+                    .filter { it.startsWith(args[1]) }
+                ArenaCommand.SET_Y -> listOf(manager?.getCurrentBaseY()?.toString() ?: "64")
+                else -> emptyList()
+            }
+            else -> emptyList()
+        }
     }
 }
