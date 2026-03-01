@@ -127,6 +127,9 @@ class ArenaPlugin : JavaPlugin(), Listener {
         // Teleport to assigned spawn
         player.teleport(spawnLoc)
         
+        // Log player position
+        logger.info("${prefix}Player ${player.name} joined -> Spawn: $spawnName at (${spawnLoc.x}, ${spawnLoc.y}, ${spawnLoc.z})")
+        
         // Equip with combat kit
         mgr.equipPlayer(player)
         
