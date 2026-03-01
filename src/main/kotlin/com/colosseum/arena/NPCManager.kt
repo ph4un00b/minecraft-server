@@ -22,14 +22,14 @@ class NPCManager(
 ) : Listener {
     
     companion object {
-        private const val NPC_RADIUS = 12  // Same as player spawn radius
+        private const val NPC_RADIUS = 6  // Inside arena, away from walls
         private const val DEFAULT_HEALTH = 1.0
-        private const val MAX_NPCS = 4
+        private const val MAX_NPCS = 4  // Maximum of 4 NPCs allowed
     }
     
     private val trackedNPCs = ConcurrentHashMap<Villager, SpawnPosition>()
     private var npcHealth = DEFAULT_HEALTH
-    private var npcCount = MAX_NPCS
+    private var npcCount = 1  // Default to 1 NPC
     private var npcEnabled = true
     
     init {
@@ -37,7 +37,12 @@ class NPCManager(
     }
     
     fun spawnArenaNPCs(world: World, baseY: Int) {
-        if (!npcEnabled) return
+        if (!npcEnabled) {
+            plugin.logger.info("[ArenaPlugin] NPC spawning disabled")
+            return
+        }
+        
+        plugin.logger.info("[ArenaPlugin] Spawning $npcCount NPCs at baseY=$baseY, radius=$NPC_RADIUS")
         
         // Clear existing NPCs first
         clearAllNPCs()
@@ -46,17 +51,20 @@ class NPCManager(
         SpawnPosition.getAll().forEachIndexed { index, position ->
             if (index < npcCount) {
                 val location = calculateNPCLocation(world, position, baseY)
+                plugin.logger.info("[ArenaPlugin] Spawning NPC #$index at $position -> $location")
                 val villager = spawnVillagerNPC(world, location)
+                plugin.logger.info("[ArenaPlugin] NPC spawned successfully: ${villager.entityId}")
                 configureNPC(villager, position)
                 trackedNPCs[villager] = position
             }
         }
+        
+        plugin.logger.info("[ArenaPlugin] NPC spawning complete. Tracked NPCs: ${trackedNPCs.size}")
     }
     
     private fun calculateNPCLocation(world: World, position: SpawnPosition, baseY: Int): Location {
-        // Get opposite spawn position
-        val oppositeSpawn = getOppositeSpawn(position)
-        val angleRad = Math.toRadians(oppositeSpawn.angleDegrees)
+        // Spawn NPC at same angle as position but inside the arena
+        val angleRad = Math.toRadians(position.angleDegrees)
         val x = (Math.cos(angleRad) * NPC_RADIUS).toInt()
         val z = (Math.sin(angleRad) * NPC_RADIUS).toInt()
         return Location(world, x + 0.5, (baseY + 1).toDouble(), z + 0.5)
