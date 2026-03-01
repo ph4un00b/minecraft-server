@@ -3,6 +3,7 @@ package com.colosseum.arena.builders
 import org.bukkit.World
 import org.bukkit.Material
 import com.colosseum.arena.domain.ArenaConfig
+import com.colosseum.arena.domain.SpawnPosition
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -31,6 +32,45 @@ class DetailedArena : ArenaBuilder {
         buildGate(world, groundY)
         buildCrenellations(world, wallTop)
         buildFloorPattern(world, groundY)
+    }
+
+    override fun buildSpawnMarkers(world: World, baseY: Int) {
+        // Build spawn markers for detailed arena
+        val spawnPositions = listOf(
+            SpawnPosition.EAST,
+            SpawnPosition.SOUTH,
+            SpawnPosition.WEST,
+            SpawnPosition.NORTH
+        )
+
+        spawnPositions.forEach { position ->
+            val angleRad = Math.toRadians(position.angleDegrees)
+            val x = (cos(angleRad) * innerRadius).toInt()
+            val z = (sin(angleRad) * innerRadius).toInt()
+
+            // Build 3x3 floor platform
+            for (fx in -1..1) {
+                for (fz in -1..1) {
+                    val block = world.getBlockAt(centerX + x + fx, baseY, centerZ + z + fz)
+                    block.type = when (position) {
+                        SpawnPosition.EAST -> Material.GOLD_BLOCK
+                        SpawnPosition.SOUTH -> Material.DIAMOND_BLOCK
+                        SpawnPosition.WEST -> Material.EMERALD_BLOCK
+                        SpawnPosition.NORTH -> Material.LAPIS_BLOCK
+                    }
+                }
+            }
+
+            // Build indicator block above spawn
+            val indicatorY = baseY + 1
+            val indicatorBlock = world.getBlockAt(centerX + x, indicatorY, centerZ + z)
+            indicatorBlock.type = when (position) {
+                SpawnPosition.EAST -> Material.TORCH
+                SpawnPosition.SOUTH -> Material.REDSTONE_TORCH
+                SpawnPosition.WEST -> Material.SOUL_TORCH
+                SpawnPosition.NORTH -> Material.LANTERN
+            }
+        }
     }
 
     private fun buildGround(world: World, groundY: Int) {

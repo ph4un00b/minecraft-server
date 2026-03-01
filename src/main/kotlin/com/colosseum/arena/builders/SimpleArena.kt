@@ -60,4 +60,8 @@ class SimpleArena : ArenaBuilder {
             world.getBlockAt(centerX + 4, y, centerZ - outerRadius).type = Material.STONE_BRICKS
         }
     }
+
+    override fun buildSpawnMarkers(world: World, baseY: Int) {
+        // Simple arena doesn't have spawn markers, so nothing to build
+    }
 }

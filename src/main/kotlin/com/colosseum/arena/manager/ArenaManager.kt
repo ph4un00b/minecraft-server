@@ -15,23 +15,26 @@ import com.colosseum.arena.operations.YLevelChanger
 import com.colosseum.arena.operations.PlayerSpawner
 import com.colosseum.arena.combat.CombatKit
 import com.colosseum.arena.combat.ArrowTracker
+import com.colosseum.arena.combat.KitConfig
 import com.colosseum.core.storage.PropertiesStorage
+import com.colosseum.arena.NPCManager
 
 /**
  * Arena Manager - Facade for all arena operations
  * Delegates spawn logic to PlayerSpawner
  */
-class ArenaManager(
-    private val simpleArena: SimpleArena,
-    private val detailedArena: DetailedArena,
-    private val clearer: ArenaClearer,
-    private val yLevelChanger: YLevelChanger,
-    private val playerSpawner: PlayerSpawner,
-    private val combatKit: CombatKit,
-    private val arrowTracker: ArrowTracker,
-    private val storage: PropertiesStorage,
-    plugin: JavaPlugin
-) {
+class ArenaManager(private val plugin: JavaPlugin) {
+
+    private val storage by lazy { PropertiesStorage { msg -> plugin.logger.info(msg) } }
+    private val simpleArena by lazy { SimpleArena() }
+    private val detailedArena by lazy { DetailedArena() }
+    private val clearer by lazy { ArenaClearer() }
+    private val playerSpawner by lazy { PlayerSpawner() }
+    private val combatKit by lazy { CombatKit(KitConfig()) }
+    val arrowTracker by lazy { ArrowTracker(plugin) }
+    val npcManager by lazy { NPCManager(plugin, playerSpawner) }
+    private val yLevelChanger by lazy { YLevelChanger(storage, clearer, npcManager) }
+    
     private val arenaBuiltKey = NamespacedKey(plugin, "arena_built")
     private val arenaTypeKey = NamespacedKey(plugin, "arena_type")
 
@@ -83,6 +86,9 @@ class ArenaManager(
         
         // Build spawn markers (delegated to PlayerSpawner)
         buildSpawnMarkers(world)
+        
+        // Spawn NPCs after arena build
+        npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
 
         // Mark as built in PDC
         pdc.set(arenaBuiltKey, PersistentDataType.INTEGER, 1)
@@ -100,12 +106,18 @@ class ArenaManager(
         
         // Clear all persistent arrows
         arrowTracker.clearAllArrows()
+        
+        // Clear NPCs
+        npcManager.clearAllNPCs()
 
         // Build new
         build(world, type)
         
         // Build spawn markers (delegated to PlayerSpawner)
         buildSpawnMarkers(world)
+        
+        // Spawn NPCs after arena build
+        npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
         
         // Reset spawn rotation for fresh start
         resetSpawnRotation()

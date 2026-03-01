@@ -3,15 +3,6 @@ package com.colosseum.arena
 import com.colosseum.arena.domain.ArenaType
 import com.colosseum.arena.domain.SpawnPosition
 import com.colosseum.arena.manager.ArenaManager
-import com.colosseum.arena.builders.SimpleArena
-import com.colosseum.arena.builders.DetailedArena
-import com.colosseum.arena.operations.ArenaClearer
-import com.colosseum.arena.operations.YLevelChanger
-import com.colosseum.arena.combat.CombatKit
-import com.colosseum.arena.combat.KitConfig
-import com.colosseum.arena.combat.ArrowTracker
-import com.colosseum.arena.operations.PlayerSpawner
-import com.colosseum.core.storage.PropertiesStorage
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.World
@@ -62,9 +53,6 @@ class ArenaPlugin : JavaPlugin(), Listener {
     // Arena manager - the facade (initialized in onEnable)
     private var manager: ArenaManager? = null
     
-    // Arrow tracker for persistent arrows
-    private var arrowTracker: ArrowTracker? = null
-    
     // Version info loaded from version.properties
     private val versionInfo by lazy { VersionInfo.load(this) }
 
@@ -102,8 +90,8 @@ class ArenaPlugin : JavaPlugin(), Listener {
         logger.info("${prefix}Built: ${versionInfo.buildTime}")
         logger.info("${prefix}Git: ${versionInfo.gitHash}")
         logger.info("${prefix}Colosseum Arena Plugin enabled successfully!")
-        arrowTracker?.let {
-            logger.info("${prefix}Arrow system: Max ${it.getMaxAllowed()} arrows (${it.getArrowCount()} per player)")
+        manager?.let {
+            logger.info("${prefix}Arrow system: Max ${it.arrowTracker.getMaxAllowed()} arrows (${it.arrowTracker.getArrowCount()} per player)")
         }
     }
     
@@ -112,50 +100,18 @@ class ArenaPlugin : JavaPlugin(), Listener {
      */
     private fun initializeComponents() {
         try {
-            // Create storage
-            val storage = PropertiesStorage { msg -> logger.info("${prefix}$msg") }
-            
-            // Create operations
-            val clearer = ArenaClearer()
-            val yLevelChanger = YLevelChanger(storage, clearer)
-            
-            // Create builders (one instance each)
-            val simpleArena = SimpleArena()
-            val detailedArena = DetailedArena()
-            
-            // Create combat kit with config
-            val kitConfig = KitConfig()
-            val combatKit = CombatKit(kitConfig)
-            
-            // Create arrow tracker (registers its own events)
-            arrowTracker = ArrowTracker(this)
-            
-            // Create player spawner (handles spawn points and rotation)
-            val playerSpawner = PlayerSpawner()
-            
-            // Create manager (facade)
-            manager = ArenaManager(
-                simpleArena = simpleArena,
-                detailedArena = detailedArena,
-                clearer = clearer,
-                yLevelChanger = yLevelChanger,
-                playerSpawner = playerSpawner,
-                combatKit = combatKit,
-                arrowTracker = arrowTracker!!,
-                storage = storage,
-                plugin = this
-            )
-            
+            manager = ArenaManager(this)
             logger.info("${prefix}Components initialized successfully")
         } catch (e: Exception) {
-            logger.severe("${prefix}Failed to initialize components: ${e.message}")
-            e.printStackTrace()
+            logger.severe("${prefix}Failed to initialize: ${e.message}")
             throw e
         }
     }
 
     override fun onDisable() {
         logger.info("${prefix}Colosseum Arena Plugin disabled.")
+        // Clear NPCs on disable
+        manager?.npcManager?.clearAllNPCs()
     }
 
     @EventHandler
@@ -198,7 +154,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
         player.sendMessage("${prefix}Pick up arrows from the ground to restock!")
     }
 
-    override fun onCommand(
+override fun onCommand(
         sender: CommandSender,
         command: Command,
         label: String,
@@ -212,7 +168,22 @@ class ArenaPlugin : JavaPlugin(), Listener {
 
             if (args.isEmpty()) {
                 val currentMgr = manager
-                val currentTracker = arrowTracker
+                val currentTracker = manager?.arrowTracker
+                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version | npcs | toggleNPCs | setNPCHealth <health> | setNPCCount <count> ]")
+                sender.sendMessage("${prefix}Version: ${versionInfo.version}")
+                if (currentMgr != null) {
+                    sender.sendMessage("${prefix}Current: base-y=${currentMgr.getCurrentBaseY()}, type=${currentMgr.getCurrentType().name.lowercase()}")
+                }
+                if (currentTracker != null) {
+                    sender.sendMessage("${prefix}Arrows: ${currentTracker.getArrowCount()}/${currentTracker.getMaxAllowed()} (5 per player)")
+                }
+                sender.sendMessage("${prefix}Spawn rotation: East → South → West → North (clockwise)")
+                return true
+            }
+
+            if (args.isEmpty()) {
+                val currentMgr = manager
+                val currentTracker = manager?.arrowTracker
                 sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version ]")
                 sender.sendMessage("${prefix}Version: ${versionInfo.version}")
                 if (currentMgr != null) {
@@ -298,7 +269,7 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 }
                 "arrows" -> {
                     // Show arrow status
-                    val currentTracker = arrowTracker
+                    val currentTracker = manager?.arrowTracker
                     if (currentTracker != null) {
                         sender.sendMessage("${prefix}Arrow Status:")
                         sender.sendMessage("  Tracked arrows: ${currentTracker.getArrowCount()}")
@@ -319,17 +290,45 @@ class ArenaPlugin : JavaPlugin(), Listener {
                     sender.sendMessage("  North: Lapis block marker")
                     sender.sendMessage("  Rotation: Clockwise (E → S → W → N)")
                 }
-                "version" -> {
-                    // Show version info from version.properties
-                    sender.sendMessage("${prefix}${versionInfo.pluginName}")
-                    sender.sendMessage("${prefix}Version: ${versionInfo.version}")
-                    sender.sendMessage("${prefix}Built: ${versionInfo.buildTime}")
-                    sender.sendMessage("${prefix}Commit: ${versionInfo.gitHash}")
-                    sender.sendMessage("${prefix}API: Paper 1.21.4")
-                    sender.sendMessage("${prefix}Java: ${System.getProperty("java.version")}")
+                "npcs" -> {
+                    sender.sendMessage("${prefix}NPC System:")
+                    sender.sendMessage("  ${manager?.npcManager?.getNPCStatus()}")
+                    sender.sendMessage("  Use: /arena toggleNPCs, /arena setNPCHealth <health>, /arena setNPCCount <count>")
+                }
+                "toggleNPCs" -> {
+                    manager?.npcManager?.toggleNPCs()
+                    sender.sendMessage("${prefix}NPCs ${if (manager?.npcManager?.isNPCEnabled() == true) "enabled" else "disabled"}")
+                }
+                "setNPCHealth" -> {
+                    if (args.size < 2) {
+                        sender.sendMessage("${prefix}Usage: /arena setNPCHealth <health>")
+                        sender.sendMessage("${prefix}Current NPC health: ${manager?.npcManager?.getNPCHealth()}")
+                        return true
+                    }
+                    val newHealth = args[1].toDoubleOrNull()
+                    if (newHealth == null || newHealth <= 0) {
+                        sender.sendMessage("${prefix}Error: Health must be a positive number")
+                        return true
+                    }
+                    manager?.npcManager?.setNPCHealth(newHealth)
+                    sender.sendMessage("${prefix}NPC health set to $newHealth")
+                }
+                "setNPCCount" -> {
+                    if (args.size < 2) {
+                        sender.sendMessage("${prefix}Usage: /arena setNPCCount <count>")
+                        sender.sendMessage("${prefix}Current NPC count: ${manager?.npcManager?.getNPCCount()}")
+                        return true
+                    }
+                    val newCount = args[1].toIntOrNull()
+                    if (newCount == null || newCount < 0 || newCount > 4) {
+                        sender.sendMessage("${prefix}Error: Count must be between 0 and 4")
+                        return true
+                    }
+                    manager?.npcManager?.setNPCCount(newCount)
+                    sender.sendMessage("${prefix}NPC count set to $newCount")
                 }
                 else -> {
-                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, restock, arrows, spawns, or version")
+                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, restock, arrows, spawns, version, npcs, toggleNPCs, setNPCHealth, or setNPCCount")
                 }
             }
             return true

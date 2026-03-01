@@ -12,4 +12,9 @@ interface ArenaBuilder {
      * Build the arena in the world with given configuration
      */
     fun build(world: World, config: ArenaConfig)
+    
+    /**
+     * Build spawn markers for the arena
+     */
+    fun buildSpawnMarkers(world: World, baseY: Int)
 }

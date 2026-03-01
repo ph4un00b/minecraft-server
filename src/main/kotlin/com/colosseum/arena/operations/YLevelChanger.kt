@@ -2,7 +2,7 @@ package com.colosseum.arena.operations
 
 import org.bukkit.World
 import com.colosseum.core.storage.PropertiesStorage
-import com.colosseum.arena.domain.ArenaType
+import com.colosseum.arena.NPCManager
 
 /**
  * Changes arena Y level and rebuilds
@@ -10,7 +10,8 @@ import com.colosseum.arena.domain.ArenaType
  */
 class YLevelChanger(
     private val storage: PropertiesStorage,
-    private val clearer: ArenaClearer
+    private val clearer: ArenaClearer,
+    private val npcManager: NPCManager
 ) {
     /**
      * Change Y level and rebuild
@@ -24,6 +25,9 @@ class YLevelChanger(
         
         // Clear the area
         clearer.clear(world)
+        
+        // Clear NPCs
+        npcManager.clearAllNPCs()
         
         // Trigger rebuild
         rebuild()
