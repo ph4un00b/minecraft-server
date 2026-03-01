@@ -28,6 +28,11 @@ enum class ArenaCommand(
 
     companion object {
         /**
+         * Message prefix for all plugin output
+         */
+        const val PREFIX = "\u001B[32m[ArenaPlugin]\u001B[0m "
+
+        /**
          * Parse a string command into an ArenaCommand enum value
          * Case-insensitive matching against all aliases
          * @return The matching ArenaCommand or null if not found
