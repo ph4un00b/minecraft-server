@@ -59,6 +59,21 @@ class ArenaPlugin : JavaPlugin(), Listener {
     override fun onEnable() {
         logger.info("${prefix}Enabling Colosseum Arena Plugin...")
         
+        // Check required plugins - throws exception on failure to stop server immediately
+        try {
+            checkRequiredPlugins()
+        } catch (e: Exception) {
+            logger.severe("${prefix}CRITICAL: Required plugin check failed: ${e.message}")
+            logger.severe("${prefix}Server will be shut down to prevent damage.")
+            // Force immediate shutdown using system exit as backup
+            logger.severe("${prefix}SHUTTING DOWN SERVER NOW!")
+            Thread {
+                Thread.sleep(1000) // Give logs time to flush
+                Bukkit.shutdown()
+            }.start()
+            return
+        }
+        
         // Initialize components in onEnable (safer than onLoad)
         initializeComponents()
 
@@ -93,6 +108,88 @@ class ArenaPlugin : JavaPlugin(), Listener {
         manager?.let {
             logger.info("${prefix}Arrow system: Max ${it.arrowTracker.getMaxAllowed()} arrows (${it.arrowTracker.getArrowCount()} per player)")
         }
+    }
+    
+    /**
+     * Check that required plugins (Citizens and Sentinel) are installed
+     * This method throws exceptions to stop the server immediately if dependencies are missing
+     */
+    private fun checkRequiredPlugins(): Boolean {
+        logger.info("${prefix}Checking required dependencies...")
+        
+        // Check Citizens first - it's a dependency for Sentinel
+        val citizensPlugin = server.pluginManager.getPlugin("Citizens")
+        if (citizensPlugin == null) {
+            logger.severe("${prefix}=================================")
+            logger.severe("${prefix}CRITICAL ERROR: Citizens plugin is not installed!")
+            logger.severe("${prefix}Please download Citizens from: https://wiki.citizensnpcs.co/Versions")
+            logger.severe("${prefix}This plugin requires Citizens to function.")
+            logger.severe("${prefix}=================================")
+            throw IllegalStateException("Citizens plugin is required but not installed")
+        }
+        
+        if (!citizensPlugin.isEnabled) {
+            logger.severe("${prefix}=================================")
+            logger.severe("${prefix}CRITICAL ERROR: Citizens plugin failed to load!")
+            logger.severe("${prefix}Check Citizens configuration and logs above.")
+            logger.severe("${prefix}=================================")
+            throw IllegalStateException("Citizens plugin failed to load")
+        }
+        
+        // Verify Citizens API is actually accessible
+        try {
+            val citizensAPI = Class.forName("net.citizensnpcs.api.CitizensAPI")
+            logger.info("${prefix}Citizens API verified: ${citizensAPI.name}")
+        } catch (e: ClassNotFoundException) {
+            logger.severe("${prefix}=================================")
+            logger.severe("${prefix}CRITICAL ERROR: Citizens API not accessible!")
+            logger.severe("${prefix}Citizens plugin may be corrupted or incompatible.")
+            logger.severe("${prefix}=================================")
+            throw IllegalStateException("Citizens API not accessible", e)
+        }
+        
+        @Suppress("DEPRECATION")
+        val citizensVersion = citizensPlugin.description.version
+        logger.info("${prefix}Citizens v$citizensVersion found and enabled")
+        
+        // Check Sentinel
+        val sentinelPlugin = server.pluginManager.getPlugin("Sentinel")
+        if (sentinelPlugin == null) {
+            logger.severe("${prefix}=================================")
+            logger.severe("${prefix}CRITICAL ERROR: Sentinel plugin is not installed!")
+            logger.severe("${prefix}Please download Sentinel from: https://wiki.citizensnpcs.co/Sentinel")
+            logger.severe("${prefix}This plugin requires Sentinel to function.")
+            logger.severe("${prefix}=================================")
+            throw IllegalStateException("Sentinel plugin is required but not installed")
+        }
+        
+        if (!sentinelPlugin.isEnabled) {
+            logger.severe("${prefix}=================================")
+            logger.severe("${prefix}CRITICAL ERROR: Sentinel plugin failed to load!")
+            logger.severe("${prefix}This usually means Citizens failed to load first.")
+            logger.severe("${prefix}Check logs above for Citizens errors.")
+            logger.severe("${prefix}=================================")
+            throw IllegalStateException("Sentinel plugin failed to load - check if Citizens loaded successfully")
+        }
+        
+        // Verify Sentinel API is accessible
+        try {
+            val sentinelTrait = Class.forName("org.mcmonkey.sentinel.SentinelTrait")
+            logger.info("${prefix}Sentinel API verified: ${sentinelTrait.name}")
+        } catch (e: ClassNotFoundException) {
+            logger.severe("${prefix}=================================")
+            logger.severe("${prefix}CRITICAL ERROR: Sentinel API not accessible!")
+            logger.severe("${prefix}Sentinel plugin may be corrupted or incompatible.")
+            logger.severe("${prefix}=================================")
+            throw IllegalStateException("Sentinel API not accessible", e)
+        }
+        
+        @Suppress("DEPRECATION")
+        val sentinelVersion = sentinelPlugin.description.version
+        logger.info("${prefix}Sentinel v$sentinelVersion found and enabled")
+        logger.info("${prefix}All required dependencies verified!")
+        
+        return true
     }
     
     /**
@@ -172,7 +269,7 @@ override fun onCommand(
             if (args.isEmpty()) {
                 val currentMgr = manager
                 val currentTracker = manager?.arrowTracker
-                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version | npcs | toggleNPCs | setNPCHealth <health> | setNPCCount <count> ]")
+                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version | npcs | toggleNPCs | setNPCHealth <health> | setNPCDamage <damage> | setNPCCount <count> ]")
                 sender.sendMessage("${prefix}Version: ${versionInfo.version}")
                 if (currentMgr != null) {
                     sender.sendMessage("${prefix}Current: base-y=${currentMgr.getCurrentBaseY()}, type=${currentMgr.getCurrentType().name.lowercase()}")
@@ -296,7 +393,7 @@ override fun onCommand(
                 "npcs" -> {
                     sender.sendMessage("${prefix}NPC System:")
                     sender.sendMessage("  ${manager?.npcManager?.getNPCStatus()}")
-                    sender.sendMessage("  Use: /arena toggleNPCs, /arena setNPCHealth <health>, /arena setNPCCount <count>")
+                    sender.sendMessage("  Use: /arena toggleNPCs, /arena setNPCHealth <health>, /arena setNPCDamage <damage>, /arena setNPCCount <count>")
                 }
                 "toggleNPCs" -> {
                     manager?.npcManager?.toggleNPCs()
@@ -316,6 +413,20 @@ override fun onCommand(
                     manager?.npcManager?.setNPCHealth(newHealth)
                     sender.sendMessage("${prefix}NPC health set to $newHealth")
                 }
+                "setNPCDamage" -> {
+                    if (args.size < 2) {
+                        sender.sendMessage("${prefix}Usage: /arena setNPCDamage <damage>")
+                        sender.sendMessage("${prefix}Current NPC damage: ${manager?.npcManager?.getNPCDamage()}")
+                        return true
+                    }
+                    val newDamage = args[1].toDoubleOrNull()
+                    if (newDamage == null || newDamage <= 0) {
+                        sender.sendMessage("${prefix}Error: Damage must be a positive number")
+                        return true
+                    }
+                    manager?.npcManager?.setNPCDamage(newDamage)
+                    sender.sendMessage("${prefix}NPC damage set to $newDamage")
+                }
                 "setNPCCount" -> {
                     if (args.size < 2) {
                         sender.sendMessage("${prefix}Usage: /arena setNPCCount <count>")
@@ -331,7 +442,7 @@ override fun onCommand(
                     sender.sendMessage("${prefix}NPC count set to $newCount")
                 }
                 else -> {
-                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, restock, arrows, spawns, version, npcs, toggleNPCs, setNPCHealth, or setNPCCount")
+                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, restock, arrows, spawns, version, npcs, toggleNPCs, setNPCHealth, setNPCDamage, or setNPCCount")
                 }
             }
             return true

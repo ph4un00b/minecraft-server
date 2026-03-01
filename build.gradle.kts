@@ -11,10 +11,15 @@ repositories {
     maven {
         url = uri("https://repo.papermc.io/repository/maven-public/")
     }
+    maven {
+        url = uri("https://repo.citizensnpcs.co/")
+    }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("net.citizensnpcs:citizens-main:2.0.37-SNAPSHOT")
+    compileOnly("org.mcmonkey:sentinel:2.9.3-SNAPSHOT")
     implementation(kotlin("stdlib"))
 }
 
@@ -139,6 +144,7 @@ tasks.processResources {
 // Apply modular tasks from tasks/ directory
 apply(from = "tasks/checkJava.gradle.kts")
 apply(from = "tasks/downloadPaper.gradle.kts")
+apply(from = "tasks/downloadPlugins.gradle.kts")
 apply(from = "tasks/setupServer.gradle.kts")
 apply(from = "tasks/runServer.gradle.kts")
 apply(from = "tasks/cleanWorld.gradle.kts")
@@ -146,7 +152,7 @@ apply(from = "tasks/cleanWorld.gradle.kts")
 // Full setup task that orchestrates the modular tasks
 tasks.register("setup") {
     group = "setup"
-    description = "Complete setup: validate Java, download Paper, build plugin, init server"
+    description = "Complete setup: validate Java, download Paper, download Citizens/Sentinel, build plugin, init server"
 
     dependsOn("setupServer")
 

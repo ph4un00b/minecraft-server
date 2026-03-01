@@ -4,7 +4,7 @@ tasks.register<Exec>("setupServer") {
     group = "setup"
     description = "Initializes server configuration"
     
-    dependsOn("checkJava", "downloadPaper", "jar")
+    dependsOn("checkJava", "downloadPaper", "downloadPlugins", "jar")
     
     workingDir("server")
     

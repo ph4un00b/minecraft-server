@@ -1,17 +1,21 @@
 package com.colosseum.arena
 
-import org.bukkit.*
-import org.bukkit.attribute.Attribute
-import org.bukkit.entity.Damageable
-import org.bukkit.entity.Villager
+import net.citizensnpcs.api.CitizensAPI
+import net.citizensnpcs.api.npc.NPC
+import net.citizensnpcs.api.npc.NPCRegistry
+import net.citizensnpcs.api.trait.Trait
+import org.bukkit.Bukkit
+import org.bukkit.Location
+import org.bukkit.World
+import org.bukkit.entity.EntityType
+import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
-import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityDeathEvent
-import org.bukkit.inventory.ItemStack
 import org.bukkit.plugin.java.JavaPlugin
-import org.bukkit.potion.PotionEffect
-import org.bukkit.potion.PotionEffectType
+import org.mcmonkey.sentinel.SentinelIntegration
+import org.mcmonkey.sentinel.SentinelPlugin
+import org.mcmonkey.sentinel.SentinelTrait
 import java.util.concurrent.ConcurrentHashMap
 import com.colosseum.arena.domain.SpawnPosition
 import com.colosseum.arena.operations.PlayerSpawner
@@ -22,14 +26,17 @@ class NPCManager(
 ) : Listener {
     
     companion object {
-        private const val NPC_RADIUS = 6  // Inside arena, away from walls
-        private const val DEFAULT_HEALTH = 1.0
-        private const val MAX_NPCS = 4  // Maximum of 4 NPCs allowed
+        private const val NPC_RADIUS = 6
+        private const val DEFAULT_HEALTH = 20.0
+        private const val DEFAULT_DAMAGE = 5.0
+        private const val MAX_NPCS = 4
+        private const val NPC_NAME_PREFIX = "ArenaGladiator_"
     }
     
-    private val trackedNPCs = ConcurrentHashMap<Villager, SpawnPosition>()
+    private val trackedNPCs = ConcurrentHashMap<Int, SpawnPosition>()
     private var npcHealth = DEFAULT_HEALTH
-    private var npcCount = 1  // Default to 1 NPC
+    private var npcDamage = DEFAULT_DAMAGE
+    private var npcCount = 1
     private var npcEnabled = true
     
     init {
@@ -42,20 +49,41 @@ class NPCManager(
             return
         }
         
-        plugin.logger.info("[ArenaPlugin] Spawning $npcCount NPCs at baseY=$baseY, radius=$NPC_RADIUS")
+        val citizensPlugin = Bukkit.getPluginManager().getPlugin("Citizens")
+        if (citizensPlugin == null || !citizensPlugin.isEnabled) {
+            plugin.logger.severe("[ArenaPlugin] Citizens plugin not found or not enabled!")
+            throw IllegalStateException("Citizens plugin is required but not available")
+        }
         
-        // Clear existing NPCs first
+        val sentinelPlugin = Bukkit.getPluginManager().getPlugin("Sentinel")
+        if (sentinelPlugin == null || !sentinelPlugin.isEnabled) {
+            plugin.logger.severe("[ArenaPlugin] Sentinel plugin not found or not enabled!")
+            throw IllegalStateException("Sentinel plugin is required but not available")
+        }
+        
+        plugin.logger.info("[ArenaPlugin] Spawning $npcCount Sentinel NPCs at baseY=$baseY")
+        
         clearAllNPCs()
         
-        // Spawn NPCs at opposite positions to players
+        val registry = CitizensAPI.getNPCRegistry()
+        
         SpawnPosition.getAll().forEachIndexed { index, position ->
             if (index < npcCount) {
                 val location = calculateNPCLocation(world, position, baseY)
-                plugin.logger.info("[ArenaPlugin] Spawning NPC #$index at $position -> $location")
-                val villager = spawnVillagerNPC(world, location)
-                plugin.logger.info("[ArenaPlugin] NPC spawned successfully: ${villager.entityId}")
-                configureNPC(villager, position)
-                trackedNPCs[villager] = position
+                plugin.logger.info("[ArenaPlugin] Spawning Sentinel NPC #$index at $position -> $location")
+                
+                try {
+                    val npc = createSentinelNPC(registry, location, index)
+                    if (npc != null) {
+                        trackedNPCs[npc.id] = position
+                        plugin.logger.info("[ArenaPlugin] Sentinel NPC spawned successfully: ID=${npc.id}")
+                    } else {
+                        plugin.logger.warning("[ArenaPlugin] Failed to spawn NPC at $position")
+                    }
+                } catch (e: Exception) {
+                    plugin.logger.severe("[ArenaPlugin] Error spawning NPC: ${e.message}")
+                    e.printStackTrace()
+                }
             }
         }
         
@@ -63,150 +91,112 @@ class NPCManager(
     }
     
     private fun calculateNPCLocation(world: World, position: SpawnPosition, baseY: Int): Location {
-        // Spawn NPC at same angle as position but inside the arena
         val angleRad = Math.toRadians(position.angleDegrees)
         val x = (Math.cos(angleRad) * NPC_RADIUS).toInt()
         val z = (Math.sin(angleRad) * NPC_RADIUS).toInt()
         return Location(world, x + 0.5, (baseY + 1).toDouble(), z + 0.5)
     }
     
-    @Suppress("DEPRECATION")
-    private fun spawnVillagerNPC(world: World, location: Location): Villager {
-        return world.spawn(location, Villager::class.java).also { villager ->
-            villager.isPersistent = true
-            villager.removeWhenFarAway = false
-            villager.customName = "Arena Guardian"
-            villager.isCustomNameVisible = false
+    private fun createSentinelNPC(registry: NPCRegistry, location: Location, index: Int): NPC? {
+        val npcName = "$NPC_NAME_PREFIX$index"
+        
+        val npc = registry.createNPC(EntityType.PLAYER, npcName)
+        if (npc == null) {
+            plugin.logger.severe("[ArenaPlugin] Failed to create NPC in registry")
+            return null
         }
+        
+        npc.spawn(location)
+        
+        if (!npc.isSpawned) {
+            plugin.logger.severe("[ArenaPlugin] NPC failed to spawn at location")
+            registry.deregister(npc)
+            return null
+        }
+        
+        val sentinel = npc.getOrAddTrait(SentinelTrait::class.java)
+        if (sentinel == null) {
+            plugin.logger.severe("[ArenaPlugin] Failed to add Sentinel trait to NPC")
+            npc.destroy()
+            return null
+        }
+        
+        configureSentinelNPC(sentinel)
+        
+        return npc
     }
     
-    private fun configureNPC(villager: Villager, position: SpawnPosition) {
-        // Set health for one-shot kills
-        // Note: Villager is always Damageable (extends LivingEntity)
-        val maxHealthAttr = Registry.ATTRIBUTE.get(NamespacedKey.minecraft("generic.max_health"))
-        maxHealthAttr?.let { attr ->
-            villager.getAttribute(attr)?.baseValue = npcHealth
-        }
-        villager.health = npcHealth
+    private fun configureSentinelNPC(sentinel: SentinelTrait) {
+        sentinel.health = npcHealth
+        sentinel.damage = npcDamage
         
-        // Prevent movement with maximum slowness
-        val slownessEffect = PotionEffect(
-            PotionEffectType.SLOWNESS,
-            Integer.MAX_VALUE,
-            255,
-            true,
-            false
-        )
-        villager.addPotionEffect(slownessEffect)
+        // Target all players - use the proper API method
+        sentinel.addTarget("Event:Player")
         
-        // Add jump effect to prevent jumping
-        val jumpEffect = PotionEffect(
-            PotionEffectType.JUMP_BOOST,
-            Integer.MAX_VALUE,
-            128,
-            true,
-            false
-        )
-        villager.addPotionEffect(jumpEffect)
+        // Set to melee combat
+        sentinel.attackRate = 10
+        sentinel.range = 16.0
         
-        // Set random profession for variety
-        val professions = listOf(
-            Villager.Profession.LIBRARIAN,
-            Villager.Profession.FARMER,
-            Villager.Profession.FISHERMAN,
-            Villager.Profession.SHEPHERD,
-            Villager.Profession.FLETCHER
-        )
-        val randomProfession = professions.random()
-        villager.setProfession(randomProfession)
-    }
-    
-    private fun getOppositeSpawn(position: SpawnPosition): SpawnPosition {
-        return when (position) {
-            SpawnPosition.EAST -> SpawnPosition.WEST
-            SpawnPosition.SOUTH -> SpawnPosition.NORTH
-            SpawnPosition.WEST -> SpawnPosition.EAST
-            SpawnPosition.NORTH -> SpawnPosition.SOUTH
-        }
-    }
-    
-    @EventHandler
-    fun onEntityDamage(event: EntityDamageEvent) {
-        val entity = event.entity
-        if (entity is Villager && trackedNPCs.containsKey(entity)) {
-            // One-shot kill handling
-            if (entity.health - event.damage <= 0) {
-                event.isCancelled = true
-                handleNPCKill(entity)
-            }
-        }
+        // Store spawn point but don't respawn automatically
+        sentinel.spawnPoint = sentinel.npc?.storedLocation
+        sentinel.respawnTime = -1
     }
     
     @EventHandler
     fun onEntityDeath(event: EntityDeathEvent) {
         val entity = event.entity
-        if (entity is Villager && trackedNPCs.containsKey(entity)) {
-            event.isCancelled = true
-            // Custom death handling
-            handleNPCDeath(entity)
-        }
-    }
-    
-    private fun handleNPCKill(villager: Villager) {
-        // Play death effects
-        villager.world.playSound(villager.location, Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f)
-        villager.world.spawnParticle(Particle.EXPLOSION, villager.location, 10)
-        villager.world.spawnParticle(Particle.FLAME, villager.location, 20)
-        villager.world.spawnParticle(Particle.LARGE_SMOKE, villager.location, 15)
+        val npc = CitizensAPI.getNPCRegistry().getNPC(entity) ?: return
         
-        // Remove NPC
-        villager.remove()
-    }
-    
-    private fun handleNPCDeath(villager: Villager) {
-        // Custom death handling - play effects, drop items, etc.
-        villager.world.playEffect(villager.location, Effect.SMOKE, 0)
-        villager.world.playSound(villager.location, Sound.ENTITY_VILLAGER_DEATH, 1.0f, 1.0f)
-        
-        // Drop custom items
-        val drops = listOf(
-            ItemStack(Material.EMERALD, 1),
-            ItemStack(Material.GOLD_INGOT, 1),
-            ItemStack(Material.DIAMOND, 1)
-        )
-        drops.forEach { drop ->
-            villager.world.dropItemNaturally(villager.location, drop)
+        if (trackedNPCs.containsKey(npc.id)) {
+            plugin.logger.info("[ArenaPlugin] NPC ${npc.id} died, will stay dead until rebuild")
+            trackedNPCs.remove(npc.id)
         }
     }
     
     fun clearAllNPCs() {
-        trackedNPCs.keys.forEach { npc ->
-            if (!npc.isDead) {
-                npc.remove()
+        val registry = CitizensAPI.getNPCRegistry()
+        
+        trackedNPCs.keys.forEach { npcId ->
+            val npc = registry.getById(npcId)
+            if (npc != null) {
+                npc.destroy()
+                plugin.logger.info("[ArenaPlugin] Removed NPC: $npcId")
             }
         }
+        
         trackedNPCs.clear()
+        plugin.logger.info("[ArenaPlugin] All NPCs cleared")
     }
     
     fun getNPCStatus(): String {
-        return "NPCs: ${if (npcEnabled) "Enabled" else "Disabled"}, Count: $npcCount, Health: $npcHealth"
+        return "NPCs: ${if (npcEnabled) "Enabled" else "Disabled"}, Count: $npcCount, Health: $npcHealth, Damage: $npcDamage"
     }
     
     fun toggleNPCs() {
         npcEnabled = !npcEnabled
+        plugin.logger.info("[ArenaPlugin] NPCs ${if (npcEnabled) "enabled" else "disabled"}")
     }
     
     fun setNPCHealth(health: Double) {
-        npcHealth = health.coerceAtLeast(0.1)
+        npcHealth = health.coerceAtLeast(1.0)
+        plugin.logger.info("[ArenaPlugin] NPC health set to $npcHealth")
+    }
+    
+    fun setNPCDamage(damage: Double) {
+        npcDamage = damage.coerceAtLeast(1.0)
+        plugin.logger.info("[ArenaPlugin] NPC damage set to $npcDamage")
     }
     
     fun setNPCCount(count: Int) {
-        npcCount = count.coerceIn(0, 4)
+        npcCount = count.coerceIn(0, MAX_NPCS)
+        plugin.logger.info("[ArenaPlugin] NPC count set to $npcCount")
     }
     
     fun getNPCCount(): Int = npcCount
     
     fun getNPCHealth(): Double = npcHealth
+    
+    fun getNPCDamage(): Double = npcDamage
     
     fun isNPCEnabled(): Boolean = npcEnabled
 }
