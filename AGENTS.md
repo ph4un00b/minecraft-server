@@ -6,49 +6,7 @@ This file contains guidelines and commands for agentic coding agents working in 
 
 This is a Kotlin-based Minecraft PaperMC plugin that auto-generates gothic colosseum arenas. The project uses Gradle for building and follows Kotlin conventions with Java 21 toolchain.
 
-## Build Commands
 
-### Core Commands
-```bash
-# Complete setup (recommended for new agents)
-./gradlew setup
-
-# Build plugin only
-./gradlew jar
-
-# Run server (for testing)
-./gradlew runServer
-
-# Validate Java version
-./gradlew checkJava
-
-# Download PaperMC server
-./gradlew downloadPaper
-
-# Delete world (regenerate arena)
-./gradlew cleanWorld
-```
-
-### Development Workflow
-```bash
-# Build and copy to server
-./gradlew jar && cp build/libs/*.jar server/plugins/
-
-# Clean and rebuild
-./gradlew clean && ./gradlew jar
-```
-
-### Testing
-This project uses JUnit 5 for testing. Run tests with:
-```bash
-./gradlew test
-
-# Run specific test class
-./gradlew test --tests "com.colosseum.arena.specific.TestClass"
-
-# Run specific test method
-./gradlew test --tests "com.colosseum.arena.specific.TestClass.testMethod"
-```
 
 ## Code Style Guidelines
 
@@ -64,18 +22,7 @@ This project uses JUnit 5 for testing. Run tests with:
 - **Formatting**: Follow Kotlin standard conventions
 - **Null Safety**: Use nullable types (`?`) and non-null assertions (`!!`) appropriately
 
-### Import Organization
-```kotlin
-// 1. Kotlin standard library
-import kotlin.*
 
-// 2. Java standard library
-import java.*
-
-// 3. Third-party libraries
-import org.bukkit.*
-import com.colosseum.*
-```
 
 ### Naming Conventions
 - **Classes**: PascalCase (e.g., `ArenaPlugin`, `ArenaManager`)
@@ -84,17 +31,6 @@ import com.colosseum.*
 - **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_ARROWS`)
 - **Packages**: lowercase with dots (e.g., `com.colosseum.arena`)
 
-### File Structure
-```
-src/main/kotlin/com/colosseum/
-├── arena/           # Core arena logic
-├── combat/          # Combat-related classes
-├── builders/        # Arena builders (SimpleArena, DetailedArena)
-├── domain/          # Domain models (ArenaConfig, SpawnPoint)
-├── operations/      # Arena operations (ArenaClearer, YLevelChanger)
-├── manager/         # ArenaManager facade
-└── core/storage/    # Storage utilities
-```
 
 ### Error Handling
 - Use try-catch blocks for initialization failures
@@ -161,6 +97,59 @@ logger.severe("$prefix Error")      // Critical errors
 
 # Run tests in specific package
 ./gradlew test --tests "com.colosseum.arena.*"
+```
+
+## Git Workflow
+
+This project follows **GitHub Flow** with `--no-ff` merges for easy rollbacks.
+
+### Branch Naming
+- `main` - Production-ready code (never commit directly)
+- `feat/*` - New features (e.g., `feat/npc-fireballs`)
+- `fix/*` - Bug fixes (e.g., `fix/spawn-location`)
+- `experiment/*` - Testing ideas (delete when done)
+
+### Development Workflow
+
+```bash
+# 1. Start new feature
+git checkout main
+git pull origin main
+git checkout -b feat/description
+
+# 2. Work and commit
+git add .
+git commit -m "feat(scope): description"
+
+# 3. Test before merging
+./gradlew test
+./gradlew jar && ./gradlew runServer
+
+# 4. Merge with --no-ff (creates merge commit for easy revert)
+git checkout main
+git merge --no-ff feat/description
+```
+
+### Commit Message Format
+```
+type(scope): description
+
+Types: feat, fix, refactor, test, docs, chore
+Example: feat(npcs): add configurable fireball attack type
+```
+
+### Emergency Revert
+```bash
+# Find merge commit hash
+git log --oneline --merges
+
+# Revert entire feature
+git revert <merge-commit-hash>
+```
+
+### Release Tagging
+```bash
+git tag -a v1.2.0 -m "Add NPC combat system"
 ```
 
 ## Security Notes
