@@ -1,5 +1,6 @@
 package com.colosseum.arena
 
+import com.colosseum.arena.commands.ArenaCommand
 import com.colosseum.arena.domain.ArenaType
 import com.colosseum.arena.domain.NPCAttackType
 import com.colosseum.arena.domain.SpawnPosition
@@ -270,7 +271,7 @@ override fun onCommand(
             if (args.isEmpty()) {
                 val currentMgr = manager
                 val currentTracker = manager?.arrowTracker
-                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version | npcs | toggleNPCs | setNPCHealth <health> | setNPCDamage <damage> | setNPCCount <count> | setNPCAttack <arrow|fireball> ]")
+                sender.sendMessage("${prefix}Usage: /arena [ ${ArenaCommand.generateUsageString()} ]")
                 sender.sendMessage("${prefix}Version: ${versionInfo.version}")
                 if (currentMgr != null) {
                     sender.sendMessage("${prefix}Current: base-y=${currentMgr.getCurrentBaseY()}, type=${currentMgr.getCurrentType().name.lowercase()}")
@@ -285,7 +286,7 @@ override fun onCommand(
             if (args.isEmpty()) {
                 val currentMgr = manager
                 val currentTracker = manager?.arrowTracker
-                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version ]")
+                sender.sendMessage("${prefix}Usage: /arena [ ${ArenaCommand.generateUsageString()} ]")
                 sender.sendMessage("${prefix}Version: ${versionInfo.version}")
                 if (currentMgr != null) {
                     sender.sendMessage("${prefix}Current: base-y=${currentMgr.getCurrentBaseY()}, type=${currentMgr.getCurrentType().name.lowercase()}")
@@ -308,26 +309,32 @@ override fun onCommand(
                 return true
             }
 
-            when (args[0].lowercase()) {
-                "simple" -> {
+            val cmd = ArenaCommand.fromString(args[0])
+            if (cmd == null) {
+                sender.sendMessage("${prefix}${ArenaCommand.generateUnknownOptionMessage()}")
+                return true
+            }
+
+            when (cmd) {
+                ArenaCommand.SIMPLE -> {
                     sender.sendMessage("${prefix}Building simple arena with spawn markers...")
                     currentMgr.rebuild(world, ArenaType.SIMPLE)
                     sender.sendMessage("${prefix}Simple arena built! Spawns at E/S/W/N inner edge")
                 }
-                "detailed" -> {
+                ArenaCommand.DETAILED -> {
                     sender.sendMessage("${prefix}Building detailed gothic arena with spawn markers...")
                     currentMgr.rebuild(world, ArenaType.DETAILED)
                     sender.sendMessage("${prefix}Detailed arena built! Spawns at E/S/W/N inner edge")
                 }
-                "rebuild" -> {
+                ArenaCommand.REBUILD -> {
                     val currentType = currentMgr.getCurrentType()
                     sender.sendMessage("${prefix}Rebuilding arena (type: ${currentType.name.lowercase()})...")
                     currentMgr.rebuild(world, currentType)
                     sender.sendMessage("${prefix}Arena rebuilt! Spawn markers restored.")
                 }
-                "sety" -> {
+                ArenaCommand.SET_Y -> {
                     if (args.size < 2) {
-                        sender.sendMessage("${prefix}Usage: /arena sety <y-level>")
+                        sender.sendMessage("${prefix}${ArenaCommand.generateCommandUsage(ArenaCommand.SET_Y)}")
                         sender.sendMessage("${prefix}Current Y level: ${currentMgr.getCurrentBaseY()}")
                         return true
                     }
@@ -341,7 +348,7 @@ override fun onCommand(
                     currentMgr.changeYLevel(world, newY, currentMgr.getCurrentType())
                     sender.sendMessage("${prefix}Arena rebuilt at Y=$newY! Spawn markers updated.")
                 }
-                "restock" -> {
+                ArenaCommand.RESTOCK -> {
                     // Get target player
                     val targetPlayer: Player = if (args.size >= 2) {
                         // Get player by name
@@ -354,7 +361,7 @@ override fun onCommand(
                         if (sender is Player) {
                             sender
                         } else {
-                            sender.sendMessage("${prefix}Usage: /arena restock <player>")
+                            sender.sendMessage("${prefix}${ArenaCommand.generateCommandUsage(ArenaCommand.RESTOCK)}")
                             return true
                         }
                     }
@@ -368,7 +375,7 @@ override fun onCommand(
                         sender.sendMessage("${prefix}Error: ${targetPlayer.name} does not have a bow")
                     }
                 }
-                "arrows" -> {
+                ArenaCommand.ARROWS -> {
                     // Show arrow status
                     val currentTracker = manager?.arrowTracker
                     if (currentTracker != null) {
@@ -381,7 +388,7 @@ override fun onCommand(
                         sender.sendMessage("${prefix}Arrow tracker not initialized")
                     }
                 }
-                "spawns" -> {
+                ArenaCommand.SPAWNS -> {
                     // Show spawn info
                     sender.sendMessage("${prefix}Spawn System:")
                     sender.sendMessage("  4 fixed positions at inner edge (radius 12)")
@@ -391,18 +398,26 @@ override fun onCommand(
                     sender.sendMessage("  North: Lapis block marker")
                     sender.sendMessage("  Rotation: Clockwise (E → S → W → N)")
                 }
-                "npcs" -> {
+                ArenaCommand.VERSION -> {
+                    // Show version info
+                    sender.sendMessage("${prefix}Arena Plugin v${versionInfo.version}")
+                    sender.sendMessage("  Built: ${versionInfo.buildTime}")
+                    sender.sendMessage("  Git: ${versionInfo.gitHash}")
+                }
+                ArenaCommand.NPCS -> {
                     sender.sendMessage("${prefix}NPC System:")
                     sender.sendMessage("  ${manager?.npcManager?.getNPCStatus()}")
-                    sender.sendMessage("  Use: /arena toggleNPCs, /arena setNPCHealth <health>, /arena setNPCDamage <damage>, /arena setNPCCount <count>, /arena setNPCAttack <arrow|fireball>")
+                    val npcCommands = listOf(ArenaCommand.TOGGLE_NPCS, ArenaCommand.SET_NPC_HEALTH, ArenaCommand.SET_NPC_DAMAGE, ArenaCommand.SET_NPC_COUNT, ArenaCommand.SET_NPC_ATTACK)
+                    val usageStr = npcCommands.joinToString(", ") { "/arena ${it.primaryName}${if (it.usageParams.isNotEmpty()) " ${it.usageParams}" else ""}" }
+                    sender.sendMessage("  Use: $usageStr")
                 }
-                "toggleNPCs" -> {
+                ArenaCommand.TOGGLE_NPCS -> {
                     manager?.npcManager?.toggleNPCs()
                     sender.sendMessage("${prefix}NPCs ${if (manager?.npcManager?.isNPCEnabled() == true) "enabled" else "disabled"}")
                 }
-                "setNPCHealth" -> {
+                ArenaCommand.SET_NPC_HEALTH -> {
                     if (args.size < 2) {
-                        sender.sendMessage("${prefix}Usage: /arena setNPCHealth <health>")
+                        sender.sendMessage("${prefix}${ArenaCommand.generateCommandUsage(ArenaCommand.SET_NPC_HEALTH)}")
                         sender.sendMessage("${prefix}Current NPC health: ${manager?.npcManager?.getNPCHealth()}")
                         return true
                     }
@@ -414,9 +429,9 @@ override fun onCommand(
                     manager?.npcManager?.setNPCHealth(newHealth)
                     sender.sendMessage("${prefix}NPC health set to $newHealth")
                 }
-                "setNPCDamage" -> {
+                ArenaCommand.SET_NPC_DAMAGE -> {
                     if (args.size < 2) {
-                        sender.sendMessage("${prefix}Usage: /arena setNPCDamage <damage>")
+                        sender.sendMessage("${prefix}${ArenaCommand.generateCommandUsage(ArenaCommand.SET_NPC_DAMAGE)}")
                         sender.sendMessage("${prefix}Current NPC damage: ${manager?.npcManager?.getNPCDamage()}")
                         return true
                     }
@@ -428,9 +443,9 @@ override fun onCommand(
                     manager?.npcManager?.setNPCDamage(newDamage)
                     sender.sendMessage("${prefix}NPC damage set to $newDamage")
                 }
-                "setNPCCount" -> {
+                ArenaCommand.SET_NPC_COUNT -> {
                     if (args.size < 2) {
-                        sender.sendMessage("${prefix}Usage: /arena setNPCCount <count>")
+                        sender.sendMessage("${prefix}${ArenaCommand.generateCommandUsage(ArenaCommand.SET_NPC_COUNT)}")
                         sender.sendMessage("${prefix}Current NPC count: ${manager?.npcManager?.getNPCCount()}")
                         return true
                     }
@@ -442,13 +457,12 @@ override fun onCommand(
                     manager?.npcManager?.setNPCCount(newCount)
                     sender.sendMessage("${prefix}NPC count set to $newCount")
                 }
-                "setnpcattack" -> {
+                ArenaCommand.SET_NPC_ATTACK -> {
                     if (args.size < 2) {
-                        sender.sendMessage("${prefix}Usage: /arena setNPCAttack <arrow|fireball>")
+                        sender.sendMessage("${prefix}${ArenaCommand.generateCommandUsage(ArenaCommand.SET_NPC_ATTACK)}")
                         sender.sendMessage("${prefix}Current NPC attack type: ${manager?.npcManager?.getNPCAttackType()}")
                         return true
                     }
-                    logger.info("${prefix}Command setNPCAttack received with arg: ${args[1]}")
                     val attackType = when (args[1].lowercase()) {
                         "arrow" -> NPCAttackType.SPECTRAL_ARROW
                         "fireball" -> NPCAttackType.FIREBALL
@@ -457,12 +471,14 @@ override fun onCommand(
                             return true
                         }
                     }
-                    logger.info("${prefix}Parsed attack type: $attackType, calling setNPCAttackType...")
                     manager?.npcManager?.setNPCAttackType(attackType)
                     sender.sendMessage("${prefix}NPC attack type set to $attackType (rebuild arena to apply)")
                 }
-                else -> {
-                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, restock, arrows, spawns, version, npcs, toggleNPCs, setNPCHealth, setNPCDamage, setNPCCount, or setNPCAttack")
+                ArenaCommand.HELP -> {
+                    sender.sendMessage("${prefix}Available commands:")
+                    ArenaCommand.generateHelpText().forEach { line ->
+                        sender.sendMessage(line)
+                    }
                 }
             }
             return true
