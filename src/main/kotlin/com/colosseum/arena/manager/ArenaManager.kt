@@ -28,11 +28,16 @@ import org.bukkit.scheduler.BukkitRunnable
  */
 class ArenaManager(private val plugin: JavaPlugin) {
     companion object {
-        const val BLOCKS_PER_TICK = 100 // Number of blocks to place per tick
-        const val PROGRESS_INTERVAL = 20L // Show progress every second (20 ticks)
+        // Number of blocks to place per tick
+        const val BLOCKS_PER_TICK = 100
+
+        // Show progress every second (20 ticks)
+        const val PROGRESS_INTERVAL = 20L
     }
 
-    private val storage by lazy { PropertiesStorage { msg -> plugin.logger.info(msg) } }
+    private val storage by lazy {
+        PropertiesStorage { msg -> plugin.logger.info(msg) }
+    }
     private val simpleArena by lazy { SimpleArena() }
     private val detailedArena by lazy { DetailedArena() }
     private val clearer by lazy { ArenaClearer() }
@@ -40,7 +45,9 @@ class ArenaManager(private val plugin: JavaPlugin) {
     private val combatKit by lazy { CombatKit(KitConfig()) }
     val arrowTracker by lazy { ArrowTracker(plugin) }
     val npcManager by lazy { NPCManager(plugin, playerSpawner) }
-    private val yLevelChanger by lazy { YLevelChanger(storage, clearer, npcManager) }
+    private val yLevelChanger by lazy {
+        YLevelChanger(storage, clearer, npcManager)
+    }
 
     private val arenaBuiltKey = NamespacedKey(plugin, "arena_built")
     private val arenaTypeKey = NamespacedKey(plugin, "arena_type")
@@ -81,10 +88,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
      * Get spawn location name based on coordinates
      * Delegates to PlayerSpawner
      */
-    fun getSpawnLocationName(
-        x: Int,
-        z: Int,
-    ): String {
+    fun getSpawnLocationName(x: Int, z: Int): String {
         return playerSpawner.getSpawnLocationName(x, z)
     }
 
@@ -118,10 +122,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
     /**
      * Rebuild arena synchronously (immediate, may cause lag)
      */
-    fun rebuild(
-        world: World,
-        type: ArenaType,
-    ) {
+    fun rebuild(world: World, type: ArenaType) {
         // Clear area blocks
         clearer.clear(world)
 
@@ -163,7 +164,9 @@ class ArenaManager(private val plugin: JavaPlugin) {
         onComplete: () -> Unit = {},
     ) {
         if (isBuilding) {
-            throw IllegalStateException("Another async build is already in progress")
+            throw IllegalStateException(
+                "Another async build is already in progress",
+            )
         }
 
         isBuilding = true
@@ -207,7 +210,11 @@ class ArenaManager(private val plugin: JavaPlugin) {
                     // Update PDC
                     val pdc = world.persistentDataContainer
                     pdc.set(arenaBuiltKey, PersistentDataType.INTEGER, 1)
-                    pdc.set(arenaTypeKey, PersistentDataType.STRING, type.name.lowercase())
+                    pdc.set(
+                        arenaTypeKey,
+                        PersistentDataType.STRING,
+                        type.name.lowercase(),
+                    )
 
                     onComplete()
                     cancel()
@@ -215,17 +222,27 @@ class ArenaManager(private val plugin: JavaPlugin) {
                 }
 
                 // Place next batch
-                val endIndex = minOf(placedBlocks + BLOCKS_PER_TICK, totalBlocks)
+                val endIndex =
+                    minOf(placedBlocks + BLOCKS_PER_TICK, totalBlocks)
                 for (i in placedBlocks until endIndex) {
                     val block = blocks[i]
-                    block.world.getBlockAt(block.x, block.y, block.z).type = block.material
+                    val world = block.world
+                    val x = block.x
+                    val y = block.y
+                    val z = block.z
+                    world.getBlockAt(x, y, z).type = block.material
                 }
 
                 placedBlocks = endIndex
                 val percentage = (placedBlocks * 100 / totalBlocks)
 
                 // Update progress every second or at milestones
-                if (placedBlocks - lastProgressUpdate >= BLOCKS_PER_TICK * 20 || percentage % 10 == 0) {
+                val progressUpdateThreshold = BLOCKS_PER_TICK * 20
+                val progressDelta = placedBlocks - lastProgressUpdate
+                val shouldUpdateProgress =
+                    progressDelta >= progressUpdateThreshold ||
+                        percentage % 10 == 0
+                if (shouldUpdateProgress) {
                     onProgress(placedBlocks, totalBlocks, percentage)
                     lastProgressUpdate = placedBlocks
                 }
@@ -236,11 +253,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
     /**
      * Change Y level and rebuild
      */
-    fun changeYLevel(
-        world: World,
-        newY: Int,
-        type: ArenaType,
-    ) {
+    fun changeYLevel(world: World, newY: Int, type: ArenaType) {
         yLevelChanger.change(world, newY) {
             rebuild(world, type)
         }
@@ -264,7 +277,8 @@ class ArenaManager(private val plugin: JavaPlugin) {
      * Update spawn location to center (fallback only)
      */
     fun updateSpawn(world: World) {
-        val spawnLocation = Location(world, 0.5, (storage.arenaBaseY + 1).toDouble(), 0.5)
+        val spawnLocation =
+            Location(world, 0.5, (storage.arenaBaseY + 1).toDouble(), 0.5)
         world.spawnLocation = spawnLocation
     }
 
@@ -292,10 +306,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
     /**
      * Private: delegate build to appropriate builder (sync)
      */
-    private fun build(
-        world: World,
-        type: ArenaType,
-    ) {
+    private fun build(world: World, type: ArenaType) {
         val config = ArenaConfig(storage.arenaBaseY, type)
         when (type) {
             ArenaType.SIMPLE -> simpleArena.build(world, config)

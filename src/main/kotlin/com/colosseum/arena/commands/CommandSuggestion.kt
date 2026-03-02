@@ -28,10 +28,7 @@ object CommandSuggestion {
      * Calculate Levenshtein distance between two strings
      * Returns minimum number of single-character edits needed
      */
-    fun levenshteinDistance(
-        s1: String,
-        s2: String,
-    ): Int {
+    fun levenshteinDistance(s1: String, s2: String): Int {
         val costs = IntArray(s2.length + 1)
         for (j in costs.indices) {
             costs[j] = j

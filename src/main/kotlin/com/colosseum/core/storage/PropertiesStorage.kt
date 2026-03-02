@@ -44,15 +44,28 @@ class PropertiesStorage(private val logger: (String) -> Unit) {
                 FileInputStream(propsFile).use { properties.load(it) }
 
                 // Parse values
-                arenaBaseY = properties.getProperty("arena-base-y", DEFAULT_BASE_Y.toString())
-                    .toIntOrNull() ?: DEFAULT_BASE_Y
-                arenaType = properties.getProperty("arena-type", DEFAULT_TYPE)
-                    ?.lowercase() ?: DEFAULT_TYPE
+                val baseYProp =
+                    properties.getProperty(
+                        "arena-base-y",
+                        DEFAULT_BASE_Y.toString(),
+                    )
+                arenaBaseY = baseYProp.toIntOrNull() ?: DEFAULT_BASE_Y
+                val typeProp = properties.getProperty(
+                    "arena-type",
+                    DEFAULT_TYPE,
+                )
+                arenaType = typeProp?.lowercase() ?: DEFAULT_TYPE
 
-                logger("Loaded arena-base-y=$arenaBaseY, arena-type=$arenaType from $FILENAME")
+                logger(
+                    "Loaded arena-base-y=$arenaBaseY, arena-type=$arenaType " +
+                        "from $FILENAME",
+                )
                 true
             } else {
-                logger("$FILENAME not found, using defaults: base-y=$DEFAULT_BASE_Y, type=$DEFAULT_TYPE")
+                logger(
+                    "$FILENAME not found, using defaults: " +
+                        "base-y=$DEFAULT_BASE_Y, type=$DEFAULT_TYPE",
+                )
                 arenaBaseY = DEFAULT_BASE_Y
                 arenaType = DEFAULT_TYPE
                 false

@@ -37,7 +37,10 @@ class ArrowTracker(private val plugin: JavaPlugin) : Listener {
         // Register events
         Bukkit.getPluginManager().registerEvents(this, plugin)
 
-        plugin.logger.info("[ArrowTracker] Initialized - Arrows convert to infinite-lifetime items")
+        plugin.logger.info(
+            "[ArrowTracker] Initialized - Arrows convert to " +
+                "infinite-lifetime items",
+        )
     }
 
     /**
@@ -51,7 +54,10 @@ class ArrowTracker(private val plugin: JavaPlugin) : Listener {
         // Only track arrows shot by players
         if (projectile is Arrow && projectile.shooter is Player) {
             // Mark arrow with metadata so we know it's an arena arrow
-            projectile.setMetadata(METADATA_KEY, FixedMetadataValue(plugin, true))
+            projectile.setMetadata(
+                METADATA_KEY,
+                FixedMetadataValue(plugin, true),
+            )
         }
     }
 
@@ -84,7 +90,9 @@ class ArrowTracker(private val plugin: JavaPlugin) : Listener {
         val item = world.dropItem(location, itemStack)
 
         // Configure item with Paper API unlimited lifetime
-        item.setUnlimitedLifetime(true) // Native Paper API - item lives forever!
+        item.setUnlimitedLifetime(
+            true,
+        ) // Native Paper API - item lives forever!
         item.setWillAge(false) // Don't age/despawn
         item.setCanPlayerPickup(true) // Allow player pickup
         item.setCanMobPickup(false) // Don't let mobs pick it up
@@ -116,7 +124,9 @@ class ArrowTracker(private val plugin: JavaPlugin) : Listener {
 
             // Debug logging
             if (event.entity is Player) {
-                plugin.logger.fine("[ArrowTracker] ${event.entity.name} picked up an arrow")
+                plugin.logger.fine(
+                    "[ArrowTracker] ${event.entity.name} picked up an arrow",
+                )
             }
         }
     }
@@ -160,7 +170,10 @@ class ArrowTracker(private val plugin: JavaPlugin) : Listener {
                 }
             }
 
-            plugin.logger.info("[ArrowTracker] Removed $toRemove oldest items. Current: ${trackedItems.size}/$maxAllowed")
+            plugin.logger.info(
+                "[ArrowTracker] Removed $toRemove oldest items. " +
+                    "Current: ${trackedItems.size}/$maxAllowed",
+            )
         }
     }
 
@@ -182,7 +195,8 @@ class ArrowTracker(private val plugin: JavaPlugin) : Listener {
     /**
      * Get maximum allowed items based on online players
      */
-    fun getMaxAllowed(): Int = Bukkit.getOnlinePlayers().size * ARROWS_PER_PLAYER
+    fun getMaxAllowed(): Int =
+        Bukkit.getOnlinePlayers().size * ARROWS_PER_PLAYER
 
     /**
      * Clear all tracked items (for arena rebuild)

@@ -7,13 +7,7 @@ import org.bukkit.World
  * Interface for placing blocks - can be immediate or queued for async
  */
 interface BlockPlacer {
-    fun setBlock(
-        world: World,
-        x: Int,
-        y: Int,
-        z: Int,
-        material: Material,
-    )
+    fun setBlock(world: World, x: Int, y: Int, z: Int, material: Material)
 
     fun fillArea(
         world: World,
@@ -76,7 +70,13 @@ class ImmediateBlockPlacer : BlockPlacer {
  * Queued block placer - stores blocks for async placement
  */
 class QueuedBlockPlacer : BlockPlacer {
-    data class BlockPlacement(val world: World, val x: Int, val y: Int, val z: Int, val material: Material)
+    data class BlockPlacement(
+        val world: World,
+        val x: Int,
+        val y: Int,
+        val z: Int,
+        val material: Material,
+    )
 
     private val blocks = mutableListOf<BlockPlacement>()
 

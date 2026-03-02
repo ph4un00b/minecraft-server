@@ -25,10 +25,7 @@ class InfoCommands(
         }
     }
 
-    private fun handleSpawns(
-        sender: CommandSender,
-        args: Array<out String>,
-    ) {
+    private fun handleSpawns(sender: CommandSender, args: Array<out String>) {
         sender.sendMessage("${ArenaCommand.PREFIX}Spawn System:")
         sender.sendMessage("  4 fixed positions at inner edge (radius 12)")
         sender.sendMessage("  East: Gold block marker")
@@ -39,11 +36,10 @@ class InfoCommands(
         commandLogger.logCommand(sender, ArenaCommand.SPAWNS, args, true)
     }
 
-    private fun handleVersion(
-        sender: CommandSender,
-        args: Array<out String>,
-    ) {
-        sender.sendMessage("${ArenaCommand.PREFIX}Arena Plugin v${versionInfo.version}")
+    private fun handleVersion(sender: CommandSender, args: Array<out String>) {
+        sender.sendMessage(
+            "${ArenaCommand.PREFIX}Arena Plugin v${versionInfo.version}",
+        )
         sender.sendMessage("  Built: ${versionInfo.buildTime}")
         sender.sendMessage("  Git: ${versionInfo.gitHash}")
         commandLogger.logCommand(
@@ -59,10 +55,7 @@ class InfoCommands(
         )
     }
 
-    private fun handleHelp(
-        sender: CommandSender,
-        args: Array<out String>,
-    ) {
+    private fun handleHelp(sender: CommandSender, args: Array<out String>) {
         sender.sendMessage("${ArenaCommand.PREFIX}Available commands:")
         ArenaCommand.generateHelpText().forEach { line ->
             sender.sendMessage(line)

@@ -71,6 +71,7 @@ This project uses **ktlint** via the `jlleitschuh/ktlint-gradle` plugin for Kotl
 - Run `./gradlew ktlintFormat` before committing to ensure consistent code style
 - The `check` task includes ktlint validation - CI will fail on style violations
 - Formatting rules are enforced by ktlint (trailing commas, indentation, import ordering, etc.)
+- Maximum line width is 80 columns - configure in `.editorconfig`
 
 ## Git Workflow
 

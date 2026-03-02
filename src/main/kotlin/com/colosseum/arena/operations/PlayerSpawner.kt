@@ -28,10 +28,7 @@ class PlayerSpawner {
      * Get the next spawn point for a player (rotates clockwise: E, S, W, N)
      * Also builds safety floor at the spawn location
      */
-    fun getNextSpawnPoint(
-        world: World,
-        baseY: Int,
-    ): Location {
+    fun getNextSpawnPoint(world: World, baseY: Int): Location {
         val spawnPosition = SpawnPosition.getByIndex(nextSpawnIndex)
         nextSpawnIndex = (nextSpawnIndex + 1) % 4
 
@@ -68,8 +65,15 @@ class PlayerSpawner {
     ) {
         for (dx in -1..1) {
             for (dz in -1..1) {
-                val block = world.getBlockAt(spawnPoint.x + dx, floorY, spawnPoint.z + dz)
-                if (block.type == Material.AIR || block.type == Material.VOID_AIR) {
+                val block = world.getBlockAt(
+                    spawnPoint.x + dx,
+                    floorY,
+                    spawnPoint.z + dz,
+                )
+                val isAir =
+                    block.type == Material.AIR ||
+                        block.type == Material.VOID_AIR
+                if (isAir) {
                     block.type = Material.STONE_BRICKS
                 }
             }
@@ -79,26 +83,31 @@ class PlayerSpawner {
     /**
      * Build all spawn point floor markers during arena construction
      */
-    fun buildSpawnMarkers(
-        world: World,
-        baseY: Int,
-    ) {
+    fun buildSpawnMarkers(world: World, baseY: Int) {
         SpawnPosition.getAll().forEach { position ->
             val spawnPoint = calculateSpawnPoint(world, position, baseY)
 
             // Create 3x3 marked area with different material per direction
             val markerMaterial =
                 when (position) {
-                    SpawnPosition.EAST -> Material.GOLD_BLOCK // Gold for East
-                    SpawnPosition.SOUTH -> Material.DIAMOND_BLOCK // Diamond for South
-                    SpawnPosition.WEST -> Material.EMERALD_BLOCK // Emerald for West
-                    SpawnPosition.NORTH -> Material.LAPIS_BLOCK // Lapis for North
+                    // Gold for East
+                    SpawnPosition.EAST -> Material.GOLD_BLOCK
+                    // Diamond for South
+                    SpawnPosition.SOUTH -> Material.DIAMOND_BLOCK
+                    // Emerald for West
+                    SpawnPosition.WEST -> Material.EMERALD_BLOCK
+                    // Lapis for North
+                    SpawnPosition.NORTH -> Material.LAPIS_BLOCK
                 }
 
             // Build 3x3 platform at spawn location
             for (dx in -1..1) {
                 for (dz in -1..1) {
-                    val block = world.getBlockAt(spawnPoint.x + dx, baseY, spawnPoint.z + dz)
+                    val block = world.getBlockAt(
+                        spawnPoint.x + dx,
+                        baseY,
+                        spawnPoint.z + dz,
+                    )
                     // Use marker material for center
                     if (dx == 0 && dz == 0) {
                         block.type = markerMaterial
@@ -113,7 +122,11 @@ class PlayerSpawner {
             }
 
             // Add a small indicator block above
-            val indicator = world.getBlockAt(spawnPoint.x, baseY + 2, spawnPoint.z)
+            val indicator = world.getBlockAt(
+                spawnPoint.x,
+                baseY + 2,
+                spawnPoint.z,
+            )
             indicator.type =
                 when (position) {
                     SpawnPosition.EAST -> Material.TORCH
@@ -134,10 +147,7 @@ class PlayerSpawner {
     /**
      * Get spawn location name based on coordinates
      */
-    fun getSpawnLocationName(
-        x: Int,
-        z: Int,
-    ): String {
+    fun getSpawnLocationName(x: Int, z: Int): String {
         return when {
             x > 5 && z in -5..5 -> "East Spawn (Gold)"
             x < -5 && z in -5..5 -> "West Spawn (Emerald)"

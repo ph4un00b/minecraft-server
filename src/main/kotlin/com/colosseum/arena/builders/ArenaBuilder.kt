@@ -23,8 +23,5 @@ interface ArenaBuilder {
     /**
      * Build spawn markers for the arena
      */
-    fun buildSpawnMarkers(
-        world: World,
-        baseY: Int,
-    )
+    fun buildSpawnMarkers(world: World, baseY: Int)
 }

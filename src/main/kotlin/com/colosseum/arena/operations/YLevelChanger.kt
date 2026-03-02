@@ -19,11 +19,7 @@ class YLevelChanger(
      * @param newY The new Y level
      * @param rebuild Callback to trigger rebuild with current type
      */
-    fun change(
-        world: World,
-        newY: Int,
-        rebuild: () -> Unit,
-    ) {
+    fun change(world: World, newY: Int, rebuild: () -> Unit) {
         // Save new Y level
         storage.setArenaBaseY(newY)
 

@@ -27,10 +27,7 @@ class NPCCommands(
         }
     }
 
-    private fun handleNPCs(
-        sender: CommandSender,
-        args: Array<out String>,
-    ) {
+    private fun handleNPCs(sender: CommandSender, args: Array<out String>) {
         sender.sendMessage("${ArenaCommand.PREFIX}NPC System:")
         sender.sendMessage("  ${npcManager?.getNPCStatus()}")
         val npcCommands =
@@ -42,11 +39,23 @@ class NPCCommands(
                 ArenaCommand.SET_NPC_ATTACK,
             )
         val usageStr =
-            npcCommands.joinToString(", ") {
-                "/arena ${it.primaryName}${if (it.usageParams.isNotEmpty()) " ${it.usageParams}" else ""}"
+            npcCommands.joinToString(", ") { cmd ->
+                val params =
+                    if (cmd.usageParams.isNotEmpty()) {
+                        " ${cmd.usageParams}"
+                    } else {
+                        ""
+                    }
+                "/arena ${cmd.primaryName}$params"
             }
         sender.sendMessage("  Use: $usageStr")
-        commandLogger.logCommand(sender, ArenaCommand.NPCS, args, true, mapOf("status" to (npcManager?.getNPCStatus() ?: "unavailable")))
+        commandLogger.logCommand(
+            sender,
+            ArenaCommand.NPCS,
+            args,
+            true,
+            mapOf("status" to (npcManager?.getNPCStatus() ?: "unavailable")),
+        )
     }
 
     private fun handleToggleNPCs(
@@ -54,9 +63,20 @@ class NPCCommands(
         args: Array<out String>,
     ) {
         npcManager?.toggleNPCs()
-        val newStatus = if (npcManager?.isNPCEnabled() == true) "enabled" else "disabled"
+        val newStatus =
+            if (npcManager?.isNPCEnabled() == true) {
+                "enabled"
+            } else {
+                "disabled"
+            }
         sender.sendMessage("${ArenaCommand.PREFIX}NPCs $newStatus")
-        commandLogger.logCommand(sender, ArenaCommand.TOGGLE_NPCS, args, true, mapOf("new_status" to newStatus))
+        commandLogger.logCommand(
+            sender,
+            ArenaCommand.TOGGLE_NPCS,
+            args,
+            true,
+            mapOf("new_status" to newStatus),
+        )
     }
 
     private fun handleSetNPCHealth(
@@ -64,14 +84,29 @@ class NPCCommands(
         args: Array<out String>,
     ) {
         if (args.size < 2) {
-            sender.sendMessage("${ArenaCommand.PREFIX}${ArenaCommand.generateCommandUsage(ArenaCommand.SET_NPC_HEALTH)}")
-            sender.sendMessage("${ArenaCommand.PREFIX}Current NPC health: ${npcManager?.getNPCHealth()}")
-            commandLogger.logCommand(sender, ArenaCommand.SET_NPC_HEALTH, args, false, mapOf("reason" to "missing_health_argument"))
+            sender.sendMessage(
+                "${ArenaCommand.PREFIX}${ArenaCommand.generateCommandUsage(
+                    ArenaCommand.SET_NPC_HEALTH,
+                )}",
+            )
+            val currentHealth = npcManager?.getNPCHealth()
+            sender.sendMessage(
+                "${ArenaCommand.PREFIX}Current NPC health: $currentHealth",
+            )
+            commandLogger.logCommand(
+                sender,
+                ArenaCommand.SET_NPC_HEALTH,
+                args,
+                false,
+                mapOf("reason" to "missing_health_argument"),
+            )
             return
         }
         val newHealth = args[1].toDoubleOrNull()
         if (newHealth == null || newHealth <= 0) {
-            sender.sendMessage("${ArenaCommand.PREFIX}Error: Health must be a positive number")
+            sender.sendMessage(
+                "${ArenaCommand.PREFIX}Error: Health must be a positive number",
+            )
             commandLogger.logCommand(
                 sender,
                 ArenaCommand.SET_NPC_HEALTH,
@@ -83,7 +118,13 @@ class NPCCommands(
         }
         npcManager?.setNPCHealth(newHealth)
         sender.sendMessage("${ArenaCommand.PREFIX}NPC health set to $newHealth")
-        commandLogger.logCommand(sender, ArenaCommand.SET_NPC_HEALTH, args, true, mapOf("health" to newHealth.toString()))
+        commandLogger.logCommand(
+            sender,
+            ArenaCommand.SET_NPC_HEALTH,
+            args,
+            true,
+            mapOf("health" to newHealth.toString()),
+        )
     }
 
     private fun handleSetNPCDamage(
@@ -91,14 +132,29 @@ class NPCCommands(
         args: Array<out String>,
     ) {
         if (args.size < 2) {
-            sender.sendMessage("${ArenaCommand.PREFIX}${ArenaCommand.generateCommandUsage(ArenaCommand.SET_NPC_DAMAGE)}")
-            sender.sendMessage("${ArenaCommand.PREFIX}Current NPC damage: ${npcManager?.getNPCDamage()}")
-            commandLogger.logCommand(sender, ArenaCommand.SET_NPC_DAMAGE, args, false, mapOf("reason" to "missing_damage_argument"))
+            sender.sendMessage(
+                "${ArenaCommand.PREFIX}${ArenaCommand.generateCommandUsage(
+                    ArenaCommand.SET_NPC_DAMAGE,
+                )}",
+            )
+            val currentDamage = npcManager?.getNPCDamage()
+            sender.sendMessage(
+                "${ArenaCommand.PREFIX}Current NPC damage: $currentDamage",
+            )
+            commandLogger.logCommand(
+                sender,
+                ArenaCommand.SET_NPC_DAMAGE,
+                args,
+                false,
+                mapOf("reason" to "missing_damage_argument"),
+            )
             return
         }
         val newDamage = args[1].toDoubleOrNull()
         if (newDamage == null || newDamage <= 0) {
-            sender.sendMessage("${ArenaCommand.PREFIX}Error: Damage must be a positive number")
+            sender.sendMessage(
+                "${ArenaCommand.PREFIX}Error: Damage must be a positive number",
+            )
             commandLogger.logCommand(
                 sender,
                 ArenaCommand.SET_NPC_DAMAGE,
@@ -110,7 +166,13 @@ class NPCCommands(
         }
         npcManager?.setNPCDamage(newDamage)
         sender.sendMessage("${ArenaCommand.PREFIX}NPC damage set to $newDamage")
-        commandLogger.logCommand(sender, ArenaCommand.SET_NPC_DAMAGE, args, true, mapOf("damage" to newDamage.toString()))
+        commandLogger.logCommand(
+            sender,
+            ArenaCommand.SET_NPC_DAMAGE,
+            args,
+            true,
+            mapOf("damage" to newDamage.toString()),
+        )
     }
 
     private fun handleSetNPCCount(
@@ -118,14 +180,29 @@ class NPCCommands(
         args: Array<out String>,
     ) {
         if (args.size < 2) {
-            sender.sendMessage("${ArenaCommand.PREFIX}${ArenaCommand.generateCommandUsage(ArenaCommand.SET_NPC_COUNT)}")
-            sender.sendMessage("${ArenaCommand.PREFIX}Current NPC count: ${npcManager?.getNPCCount()}")
-            commandLogger.logCommand(sender, ArenaCommand.SET_NPC_COUNT, args, false, mapOf("reason" to "missing_count_argument"))
+            sender.sendMessage(
+                "${ArenaCommand.PREFIX}${ArenaCommand.generateCommandUsage(
+                    ArenaCommand.SET_NPC_COUNT,
+                )}",
+            )
+            val currentCount = npcManager?.getNPCCount()
+            sender.sendMessage(
+                "${ArenaCommand.PREFIX}Current NPC count: $currentCount",
+            )
+            commandLogger.logCommand(
+                sender,
+                ArenaCommand.SET_NPC_COUNT,
+                args,
+                false,
+                mapOf("reason" to "missing_count_argument"),
+            )
             return
         }
         val newCount = args[1].toIntOrNull()
         if (newCount == null || newCount < 0 || newCount > 4) {
-            sender.sendMessage("${ArenaCommand.PREFIX}Error: Count must be between 0 and 4")
+            sender.sendMessage(
+                "${ArenaCommand.PREFIX}Error: Count must be between 0 and 4",
+            )
             commandLogger.logCommand(
                 sender,
                 ArenaCommand.SET_NPC_COUNT,
@@ -137,7 +214,13 @@ class NPCCommands(
         }
         npcManager?.setNPCCount(newCount)
         sender.sendMessage("${ArenaCommand.PREFIX}NPC count set to $newCount")
-        commandLogger.logCommand(sender, ArenaCommand.SET_NPC_COUNT, args, true, mapOf("count" to newCount.toString()))
+        commandLogger.logCommand(
+            sender,
+            ArenaCommand.SET_NPC_COUNT,
+            args,
+            true,
+            mapOf("count" to newCount.toString()),
+        )
     }
 
     private fun handleSetNPCAttack(
@@ -145,9 +228,22 @@ class NPCCommands(
         args: Array<out String>,
     ) {
         if (args.size < 2) {
-            sender.sendMessage("${ArenaCommand.PREFIX}${ArenaCommand.generateCommandUsage(ArenaCommand.SET_NPC_ATTACK)}")
-            sender.sendMessage("${ArenaCommand.PREFIX}Current NPC attack type: ${npcManager?.getNPCAttackType()}")
-            commandLogger.logCommand(sender, ArenaCommand.SET_NPC_ATTACK, args, false, mapOf("reason" to "missing_attack_argument"))
+            sender.sendMessage(
+                "${ArenaCommand.PREFIX}${ArenaCommand.generateCommandUsage(
+                    ArenaCommand.SET_NPC_ATTACK,
+                )}",
+            )
+            val currentAttack = npcManager?.getNPCAttackType()
+            sender.sendMessage(
+                "${ArenaCommand.PREFIX}Current NPC attack type: $currentAttack",
+            )
+            commandLogger.logCommand(
+                sender,
+                ArenaCommand.SET_NPC_ATTACK,
+                args,
+                false,
+                mapOf("reason" to "missing_attack_argument"),
+            )
             return
         }
         val attackType =
@@ -155,19 +251,34 @@ class NPCCommands(
                 "arrow" -> NPCAttackType.SPECTRAL_ARROW
                 "fireball" -> NPCAttackType.FIREBALL
                 else -> {
-                    sender.sendMessage("${ArenaCommand.PREFIX}Error: Attack type must be 'arrow' or 'fireball'")
+                    sender.sendMessage(
+                        "${ArenaCommand.PREFIX}Error: Attack type must be " +
+                            "'arrow' or 'fireball'",
+                    )
                     commandLogger.logCommand(
                         sender,
                         ArenaCommand.SET_NPC_ATTACK,
                         args,
                         false,
-                        mapOf("reason" to "invalid_attack_type", "input" to args[1]),
+                        mapOf(
+                            "reason" to "invalid_attack_type",
+                            "input" to args[1],
+                        ),
                     )
                     return
                 }
             }
         npcManager?.setNPCAttackType(attackType)
-        sender.sendMessage("${ArenaCommand.PREFIX}NPC attack type set to $attackType (rebuild arena to apply)")
-        commandLogger.logCommand(sender, ArenaCommand.SET_NPC_ATTACK, args, true, mapOf("type" to attackType.name.lowercase()))
+        sender.sendMessage(
+            "${ArenaCommand.PREFIX}NPC attack type set to $attackType " +
+                "(rebuild arena to apply)",
+        )
+        commandLogger.logCommand(
+            sender,
+            ArenaCommand.SET_NPC_ATTACK,
+            args,
+            true,
+            mapOf("type" to attackType.name.lowercase()),
+        )
     }
 }

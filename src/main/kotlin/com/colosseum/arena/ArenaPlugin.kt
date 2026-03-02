@@ -39,7 +39,10 @@ data class VersionInfo(
                     version = props.getProperty("version", "unknown"),
                     buildTime = props.getProperty("build.time", "unknown"),
                     gitHash = props.getProperty("git.hash", "unknown"),
-                    pluginName = props.getProperty("plugin.name", "ColosseumArena"),
+                    pluginName = props.getProperty(
+                        "plugin.name",
+                        "ColosseumArena",
+                    ),
                 )
             } else {
                 // Fallback if version.properties not found
@@ -68,8 +71,12 @@ class ArenaPlugin : JavaPlugin(), Listener {
         try {
             checkRequiredPlugins()
         } catch (e: Exception) {
-            logger.severe("${prefix}CRITICAL: Required plugin check failed: ${e.message}")
-            logger.severe("${prefix}Server will be shut down to prevent damage.")
+            logger.severe(
+                "${prefix}CRITICAL: Required plugin check failed: ${e.message}",
+            )
+            logger.severe(
+                "${prefix}Server will be shut down to prevent damage.",
+            )
             // Force immediate shutdown using system exit as backup
             logger.severe("${prefix}SHUTTING DOWN SERVER NOW!")
             Thread {
@@ -95,9 +102,13 @@ class ArenaPlugin : JavaPlugin(), Listener {
         manager?.let { mgr ->
             val wasBuilt = mgr.checkAndBuild(world)
             if (wasBuilt) {
-                logger.info("${prefix}Arena construction complete with spawn markers!")
+                logger.info(
+                    "${prefix}Arena construction complete with spawn markers!",
+                )
             } else {
-                logger.info("${prefix}Arena already built. Skipping generation.")
+                logger.info(
+                    "${prefix}Arena already built. Skipping generation.",
+                )
             }
         } ?: run {
             logger.severe("${prefix}Manager not initialized! Plugin disabled.")
@@ -111,8 +122,11 @@ class ArenaPlugin : JavaPlugin(), Listener {
         logger.info("${prefix}Git: ${versionInfo.gitHash}")
         logger.info("${prefix}Colosseum Arena Plugin enabled successfully!")
         manager?.let {
+            val maxArrows = it.arrowTracker.getMaxAllowed()
+            val currentArrows = it.arrowTracker.getArrowCount()
             logger.info(
-                "${prefix}Arrow system: Max ${it.arrowTracker.getMaxAllowed()} arrows (${it.arrowTracker.getArrowCount()} per player)",
+                "${prefix}Arrow system: Max $maxArrows arrows " +
+                    "($currentArrows per player)",
             )
         }
 
@@ -132,17 +146,30 @@ class ArenaPlugin : JavaPlugin(), Listener {
         val citizensPlugin = server.pluginManager.getPlugin("Citizens")
         if (citizensPlugin == null) {
             logger.severe("$prefix=================================")
-            logger.severe("${prefix}CRITICAL ERROR: Citizens plugin is not installed!")
-            logger.severe("${prefix}Please download Citizens from: https://wiki.citizensnpcs.co/Versions")
-            logger.severe("${prefix}This plugin requires Citizens to function.")
+            logger.severe(
+                "${prefix}CRITICAL ERROR: Citizens plugin is not installed!",
+            )
+            logger.severe(
+                "${prefix}Please download Citizens from: " +
+                    "https://wiki.citizensnpcs.co/Versions",
+            )
+            logger.severe(
+                "${prefix}This plugin requires Citizens to function.",
+            )
             logger.severe("$prefix=================================")
-            throw IllegalStateException("Citizens plugin is required but not installed")
+            throw IllegalStateException(
+                "Citizens plugin is required but not installed",
+            )
         }
 
         if (!citizensPlugin.isEnabled) {
             logger.severe("$prefix=================================")
-            logger.severe("${prefix}CRITICAL ERROR: Citizens plugin failed to load!")
-            logger.severe("${prefix}Check Citizens configuration and logs above.")
+            logger.severe(
+                "${prefix}CRITICAL ERROR: Citizens plugin failed to load!",
+            )
+            logger.severe(
+                "${prefix}Check Citizens configuration and logs above.",
+            )
             logger.severe("$prefix=================================")
             throw IllegalStateException("Citizens plugin failed to load")
         }
@@ -153,8 +180,12 @@ class ArenaPlugin : JavaPlugin(), Listener {
             logger.info("${prefix}Citizens API verified: ${citizensAPI.name}")
         } catch (e: ClassNotFoundException) {
             logger.severe("$prefix=================================")
-            logger.severe("${prefix}CRITICAL ERROR: Citizens API not accessible!")
-            logger.severe("${prefix}Citizens plugin may be corrupted or incompatible.")
+            logger.severe(
+                "${prefix}CRITICAL ERROR: Citizens API not accessible!",
+            )
+            logger.severe(
+                "${prefix}Citizens plugin may be corrupted or incompatible.",
+            )
             logger.severe("$prefix=================================")
             throw IllegalStateException("Citizens API not accessible", e)
         }
@@ -167,30 +198,52 @@ class ArenaPlugin : JavaPlugin(), Listener {
         val sentinelPlugin = server.pluginManager.getPlugin("Sentinel")
         if (sentinelPlugin == null) {
             logger.severe("$prefix=================================")
-            logger.severe("${prefix}CRITICAL ERROR: Sentinel plugin is not installed!")
-            logger.severe("${prefix}Please download Sentinel from: https://wiki.citizensnpcs.co/Sentinel")
-            logger.severe("${prefix}This plugin requires Sentinel to function.")
+            logger.severe(
+                "${prefix}CRITICAL ERROR: Sentinel plugin is not installed!",
+            )
+            logger.severe(
+                "${prefix}Please download Sentinel from: " +
+                    "https://wiki.citizensnpcs.co/Sentinel",
+            )
+            logger.severe(
+                "${prefix}This plugin requires Sentinel to function.",
+            )
             logger.severe("$prefix=================================")
-            throw IllegalStateException("Sentinel plugin is required but not installed")
+            throw IllegalStateException(
+                "Sentinel plugin is required but not installed",
+            )
         }
 
         if (!sentinelPlugin.isEnabled) {
             logger.severe("$prefix=================================")
-            logger.severe("${prefix}CRITICAL ERROR: Sentinel plugin failed to load!")
-            logger.severe("${prefix}This usually means Citizens failed to load first.")
+            logger.severe(
+                "${prefix}CRITICAL ERROR: Sentinel plugin failed to load!",
+            )
+            logger.severe(
+                "${prefix}This usually means Citizens failed to load first.",
+            )
             logger.severe("${prefix}Check logs above for Citizens errors.")
             logger.severe("$prefix=================================")
-            throw IllegalStateException("Sentinel plugin failed to load - check if Citizens loaded successfully")
+            throw IllegalStateException(
+                "Sentinel plugin failed to load - " +
+                    "check if Citizens loaded successfully",
+            )
         }
 
         // Verify Sentinel API is accessible
         try {
-            val sentinelTrait = Class.forName("org.mcmonkey.sentinel.SentinelTrait")
+            val sentinelTrait = Class.forName(
+                "org.mcmonkey.sentinel.SentinelTrait",
+            )
             logger.info("${prefix}Sentinel API verified: ${sentinelTrait.name}")
         } catch (e: ClassNotFoundException) {
             logger.severe("$prefix=================================")
-            logger.severe("${prefix}CRITICAL ERROR: Sentinel API not accessible!")
-            logger.severe("${prefix}Sentinel plugin may be corrupted or incompatible.")
+            logger.severe(
+                "${prefix}CRITICAL ERROR: Sentinel API not accessible!",
+            )
+            logger.severe(
+                "${prefix}Sentinel plugin may be corrupted or incompatible.",
+            )
             logger.severe("$prefix=================================")
             throw IllegalStateException("Sentinel API not accessible", e)
         }
@@ -211,7 +264,10 @@ class ArenaPlugin : JavaPlugin(), Listener {
             manager = ArenaManager(this)
             commandLogger = CommandLogger(dataFolder)
             logger.info("${prefix}Components initialized successfully")
-            logger.info("${prefix}Command logging enabled: ${commandLogger.getLogFile().absolutePath}")
+            val logPath = commandLogger.getLogFile().absolutePath
+            logger.info(
+                "${prefix}Command logging enabled: $logPath",
+            )
         } catch (e: Exception) {
             logger.severe("${prefix}Failed to initialize: ${e.message}")
             throw e
@@ -232,19 +288,33 @@ class ArenaPlugin : JavaPlugin(), Listener {
 
         // Get next spawn point (rotates: E, S, W, N)
         val spawnLoc = mgr.getNextSpawnPoint(world)
-        val spawnName = mgr.getSpawnLocationName(spawnLoc.blockX, spawnLoc.blockZ)
+        val spawnName = mgr.getSpawnLocationName(
+            spawnLoc.blockX,
+            spawnLoc.blockZ,
+        )
 
         // Teleport to assigned spawn
         player.teleport(spawnLoc)
 
         // Log player position
-        logger.info("${prefix}Player ${player.name} joined -> Spawn: $spawnName at (${spawnLoc.x}, ${spawnLoc.y}, ${spawnLoc.z})")
+        val locX = spawnLoc.x
+        val locY = spawnLoc.y
+        val locZ = spawnLoc.z
+        logger.info(
+            "${prefix}Player ${player.name} joined -> " +
+                "Spawn: $spawnName at ($locX, $locY, $locZ)",
+        )
 
         // Equip with combat kit
         mgr.equipPlayer(player)
 
-        player.sendMessage("${prefix}Welcome to the arena! You received a combat kit.")
-        player.sendMessage("${prefix}Spawned at: $spawnName. Arrows are limited - pick them up!")
+        player.sendMessage(
+            "${prefix}Welcome to the arena! You received a combat kit.",
+        )
+        player.sendMessage(
+            "${prefix}Spawned at: $spawnName. " +
+                "Arrows are limited - pick them up!",
+        )
     }
 
     @EventHandler
@@ -255,7 +325,10 @@ class ArenaPlugin : JavaPlugin(), Listener {
 
         // Get next spawn point for respawn
         val spawnLoc = mgr.getNextSpawnPoint(world)
-        val spawnName = mgr.getSpawnLocationName(spawnLoc.blockX, spawnLoc.blockZ)
+        val spawnName = mgr.getSpawnLocationName(
+            spawnLoc.blockX,
+            spawnLoc.blockZ,
+        )
 
         // Set respawn location
         event.respawnLocation = spawnLoc
@@ -263,8 +336,12 @@ class ArenaPlugin : JavaPlugin(), Listener {
         // Equip with fresh combat kit
         mgr.equipPlayer(player)
 
-        player.sendMessage("${prefix}Respawned at: $spawnName! Fresh combat kit equipped.")
-        player.sendMessage("${prefix}Pick up arrows from the ground to restock!")
+        player.sendMessage(
+            "${prefix}Respawned at: $spawnName! Fresh combat kit equipped.",
+        )
+        player.sendMessage(
+            "${prefix}Pick up arrows from the ground to restock!",
+        )
     }
 
     override fun onCommand(
@@ -275,26 +352,39 @@ class ArenaPlugin : JavaPlugin(), Listener {
     ): Boolean {
         if (command.name.equals("arena", ignoreCase = true)) {
             if (!sender.hasPermission("colosseum.arena.admin")) {
-                sender.sendMessage("${prefix}You don't have permission to use this command.")
+                sender.sendMessage(
+                    "${prefix}You don't have permission to use this command.",
+                )
                 return true
             }
 
             if (args.isEmpty()) {
                 val currentMgr = manager
                 val currentTracker = manager?.arrowTracker
-                sender.sendMessage("${prefix}Usage: /arena [ ${ArenaCommand.generateUsageString()} ]")
+                val usage = ArenaCommand.generateUsageString()
+                sender.sendMessage(
+                    "${prefix}Usage: /arena [ $usage ]",
+                )
                 sender.sendMessage("${prefix}Version: ${versionInfo.version}")
                 if (currentMgr != null) {
+                    val baseY = currentMgr.getCurrentBaseY()
+                    val typeName = currentMgr.getCurrentType().name.lowercase()
                     sender.sendMessage(
-                        "${prefix}Current: base-y=${currentMgr.getCurrentBaseY()}, type=${currentMgr.getCurrentType().name.lowercase()}",
+                        "${prefix}Current: base-y=$baseY, type=$typeName",
                     )
                 }
                 if (currentTracker != null) {
+                    val arrowCount = currentTracker.getArrowCount()
+                    val maxAllowed = currentTracker.getMaxAllowed()
                     sender.sendMessage(
-                        "${prefix}Arrows: ${currentTracker.getArrowCount()}/${currentTracker.getMaxAllowed()} (5 per player)",
+                        "${prefix}Arrows: $arrowCount/$maxAllowed " +
+                            "(5 per player)",
                     )
                 }
-                sender.sendMessage("${prefix}Spawn rotation: East → South → West → North (clockwise)")
+                sender.sendMessage(
+                    "${prefix}Spawn rotation: " +
+                        "East → South → West → North (clockwise)",
+                )
                 return true
             }
 
@@ -306,7 +396,9 @@ class ArenaPlugin : JavaPlugin(), Listener {
 
             val currentMgr =
                 manager ?: run {
-                    sender.sendMessage("${prefix}Error: Plugin not fully initialized")
+                    sender.sendMessage(
+                        "${prefix}Error: Plugin not fully initialized",
+                    )
                     return true
                 }
 
@@ -314,45 +406,80 @@ class ArenaPlugin : JavaPlugin(), Listener {
             if (cmd == null) {
                 val suggestion = CommandSuggestion.suggestSimilar(args[0])
                 if (suggestion != null) {
-                    sender.sendMessage("${prefix}Unknown command '${args[0]}'. Did you mean '$suggestion'?")
+                    sender.sendMessage(
+                        "${prefix}Unknown command '${args[0]}'. " +
+                            "Did you mean '$suggestion'?",
+                    )
                 } else {
-                    sender.sendMessage("${prefix}${ArenaCommand.generateUnknownOptionMessage()}")
+                    val unknownMsg = ArenaCommand.generateUnknownOptionMessage()
+                    sender.sendMessage(
+                        "${prefix}$unknownMsg",
+                    )
                 }
                 return true
             }
 
             // Check if a build is in progress for build commands
-            val isBuildCommand = cmd in listOf(ArenaCommand.SIMPLE, ArenaCommand.DETAILED, ArenaCommand.REBUILD)
+            val isBuildCommand = cmd in listOf(
+                ArenaCommand.SIMPLE,
+                ArenaCommand.DETAILED,
+                ArenaCommand.REBUILD,
+            )
 
             // Initialize command category handlers with dependency injection
-            val buildCommands = BuildCommands(currentMgr, world, commandLogger, this)
+            val buildCommands =
+                BuildCommands(currentMgr, world, commandLogger, this)
             val playerCommands = PlayerCommands(currentMgr, commandLogger)
             val npcCommands = NPCCommands(currentMgr.npcManager, commandLogger)
-            val infoCommands = InfoCommands(versionInfo, currentMgr, commandLogger)
+            val infoCommands =
+                InfoCommands(versionInfo, currentMgr, commandLogger)
 
             // Handle cancel command first
             if (cmd == ArenaCommand.CANCEL) {
                 if (buildCommands.isBuilding()) {
-                    sender.sendMessage("${prefix}Cannot cancel - build is already in progress and cannot be interrupted")
-                    commandLogger.logCommand(sender, cmd, args, false, mapOf("reason" to "build_in_progress_no_cancel"))
+                    sender.sendMessage(
+                        "${prefix}Cannot cancel - build is already " +
+                            "in progress and cannot be interrupted",
+                    )
+                    commandLogger.logCommand(
+                        sender,
+                        cmd,
+                        args,
+                        false,
+                        mapOf("reason" to "build_in_progress_no_cancel"),
+                    )
                 } else {
                     sender.sendMessage("${prefix}No operation to cancel")
-                    commandLogger.logCommand(sender, cmd, args, false, mapOf("reason" to "no_operation"))
+                    commandLogger.logCommand(
+                        sender,
+                        cmd,
+                        args,
+                        false,
+                        mapOf("reason" to "no_operation"),
+                    )
                 }
                 return true
             }
 
             // Check if this is a destructive command
-            val isDestructive = cmd in listOf(ArenaCommand.SIMPLE, ArenaCommand.DETAILED, ArenaCommand.REBUILD, ArenaCommand.SET_Y)
+            val isDestructive = cmd in listOf(
+                ArenaCommand.SIMPLE,
+                ArenaCommand.DETAILED,
+                ArenaCommand.REBUILD,
+                ArenaCommand.SET_Y,
+            )
 
             if (isDestructive) {
                 // Check for force flag
-                val hasForceFlag = args.size > 1 && args[1].equals("f", ignoreCase = true)
+                val hasForceFlag =
+                    args.size > 1 && args[1].equals("f", ignoreCase = true)
 
                 // Execute with appropriate mode (sync with 'f' flag, async by default)
                 val newArgs =
                     if (hasForceFlag) {
-                        args.filterIndexed { index, _ -> index != 1 }.toTypedArray()
+                        args.filterIndexed { index, _ ->
+                            index != 1
+                        }.toTypedArray()
                     } else {
                         args
                     }
@@ -382,7 +509,13 @@ class ArenaPlugin : JavaPlugin(), Listener {
 
                 else -> {
                     sender.sendMessage("${prefix}Unknown command")
-                    commandLogger.logCommand(sender, cmd, args, false, mapOf("reason" to "unknown_command"))
+                    commandLogger.logCommand(
+                        sender,
+                        cmd,
+                        args,
+                        false,
+                        mapOf("reason" to "unknown_command"),
+                    )
                 }
             }
             return true
@@ -408,15 +541,25 @@ class ArenaPlugin : JavaPlugin(), Listener {
                     ArenaCommand.RESTOCK ->
                         server.onlinePlayers
                             .map { it.name }
-                            .filter { it.startsWith(args[1], ignoreCase = true) }
+                            .filter {
+                                it.startsWith(
+                                    args[1],
+                                    ignoreCase = true,
+                                )
+                            }
                     ArenaCommand.SET_NPC_ATTACK ->
                         listOf("arrow", "fireball")
                             .filter { it.startsWith(args[1].lowercase()) }
                     ArenaCommand.SET_NPC_COUNT ->
                         listOf("0", "1", "2", "3", "4")
                             .filter { it.startsWith(args[1]) }
-                    ArenaCommand.SET_Y -> listOf(manager?.getCurrentBaseY()?.toString() ?: "64")
-                    ArenaCommand.SIMPLE, ArenaCommand.DETAILED, ArenaCommand.REBUILD ->
+                    ArenaCommand.SET_Y -> listOf(
+                        manager?.getCurrentBaseY()?.toString() ?: "64",
+                    )
+                    ArenaCommand.SIMPLE,
+                    ArenaCommand.DETAILED,
+                    ArenaCommand.REBUILD,
+                    ->
                         listOf("f")
                             .filter { it.startsWith(args[1].lowercase()) }
                     else -> emptyList()

@@ -83,7 +83,8 @@ class CombatKit(private val config: KitConfig) {
 
         // Add arrows (capped at max)
         val currentArrows = getArrowCount(player)
-        val arrowsToAdd = minOf(config.restockAmount, config.maxArrows - currentArrows)
+        val arrowsToAdd =
+            minOf(config.restockAmount, config.maxArrows - currentArrows)
 
         if (arrowsToAdd > 0) {
             inventory.addItem(ItemStack(Material.ARROW, arrowsToAdd))
@@ -106,14 +107,21 @@ class CombatKit(private val config: KitConfig) {
      * Check if player has a bow in inventory
      */
     fun hasBow(player: Player): Boolean {
-        return player.inventory.contents.any { it != null && it.type == Material.BOW }
+        return player.inventory.contents.any {
+            it != null && it.type == Material.BOW
+        }
     }
 
     /**
      * Get configuration summary for display
      */
     fun getConfigSummary(): String {
-        return "bow=${config.bowEnchantments.map { "${it.key.key.key}:${it.value}" }.joinToString(",")}, " +
-            "initial=${config.initialArrows}, restock=${config.restockAmount}, max=${config.maxArrows}"
+        val enchants = config.bowEnchantments.map {
+            "${it.key.key.key}:${it.value}"
+        }.joinToString(",")
+        val initial = config.initialArrows
+        val restock = config.restockAmount
+        val max = config.maxArrows
+        return "bow=$enchants, initial=$initial, restock=$restock, max=$max"
     }
 }

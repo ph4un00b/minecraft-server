@@ -13,7 +13,9 @@ import java.time.format.DateTimeFormatter
  */
 class CommandLogger(pluginDataFolder: File) {
     private val logFile: File
-    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    private val dateFormatter = DateTimeFormatter.ofPattern(
+        "yyyy-MM-dd HH:mm:ss",
+    )
 
     init {
         // Create plugin data folder if it doesn't exist
@@ -41,7 +43,11 @@ class CommandLogger(pluginDataFolder: File) {
         val locationInfo =
             if (sender is Player) {
                 val loc = sender.location
-                "world=${loc.world?.name},x=${loc.blockX},y=${loc.blockY},z=${loc.blockZ}"
+                val w = loc.world?.name
+                val x = loc.blockX
+                val y = loc.blockY
+                val z = loc.blockZ
+                "world=$w,x=$x,y=$y,z=$z"
             } else {
                 "console"
             }

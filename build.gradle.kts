@@ -107,7 +107,10 @@ if (gitHash != "unknown" && gitHash.isNotEmpty()) {
 
     println("[BUILD] Updated version.properties with git info: 1.0+$gitHash")
 } else {
-    println("[BUILD] Git not available, using committed version.properties values")
+    println(
+        "[BUILD] Git not available, " +
+            "using committed version.properties values",
+    )
 }
 
 // Get final version from properties
@@ -168,7 +171,8 @@ apply(from = "tasks/cleanWorld.gradle.kts")
 // Full setup task that orchestrates the modular tasks
 tasks.register("setup") {
     group = "setup"
-    description = "Complete setup: validate Java, download Paper, download Citizens/Sentinel, build plugin, init server"
+    description = "Setup: validate Java, download Paper/Sentinel, " +
+        "build plugin, init server"
 
     dependsOn("setupServer")
 
@@ -182,7 +186,9 @@ tasks.register("setup") {
     doLast {
         println("[INFO] Setup complete!")
         println("[INFO] Plugin built: $fullVersion ($finalBuildTime)")
-        println("[INFO] Edit server/phau.properties to configure arena settings")
+        println(
+            "[INFO] Edit server/phau.properties to configure arena settings",
+        )
         println("[INFO] Edit server/server.properties for server settings")
         println("[INFO] Run './start-server.sh' to start")
     }

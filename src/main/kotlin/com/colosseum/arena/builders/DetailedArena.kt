@@ -38,10 +38,7 @@ class DetailedArena : ArenaBuilder {
         buildFloorPattern(world, groundY, placer)
     }
 
-    override fun buildSpawnMarkers(
-        world: World,
-        baseY: Int,
-    ) {
+    override fun buildSpawnMarkers(world: World, baseY: Int) {
         // Build spawn markers for detailed arena
         val spawnPositions =
             listOf(
@@ -66,7 +63,11 @@ class DetailedArena : ArenaBuilder {
                             SpawnPosition.WEST -> Material.EMERALD_BLOCK
                             SpawnPosition.NORTH -> Material.LAPIS_BLOCK
                         }
-                    world.getBlockAt(centerX + x + fx, baseY, centerZ + z + fz).type = blockType
+                    world.getBlockAt(
+                        centerX + x + fx,
+                        baseY,
+                        centerZ + z + fz,
+                    ).type = blockType
                 }
             }
 
@@ -79,15 +80,15 @@ class DetailedArena : ArenaBuilder {
                     SpawnPosition.WEST -> Material.SOUL_TORCH
                     SpawnPosition.NORTH -> Material.LANTERN
                 }
-            world.getBlockAt(centerX + x, indicatorY, centerZ + z).type = indicatorType
+            world.getBlockAt(
+                centerX + x,
+                indicatorY,
+                centerZ + z,
+            ).type = indicatorType
         }
     }
 
-    private fun buildGround(
-        world: World,
-        groundY: Int,
-        placer: BlockPlacer,
-    ) {
+    private fun buildGround(world: World, groundY: Int, placer: BlockPlacer) {
         val radius = outerRadius.toInt() + 2
         for (x in -radius..radius) {
             for (z in -radius..radius) {
@@ -95,11 +96,21 @@ class DetailedArena : ArenaBuilder {
                 if (distance <= radius) {
                     val material =
                         if (distance <= 12) {
-                            if ((x + z) % 2 == 0) Material.SMOOTH_STONE else Material.STONE_BRICKS
+                            if ((x + z) % 2 == 0) {
+                                Material.SMOOTH_STONE
+                            } else {
+                                Material.STONE_BRICKS
+                            }
                         } else {
                             Material.GRASS_BLOCK
                         }
-                    placer.setBlock(world, centerX + x, groundY, centerZ + z, material)
+                    placer.setBlock(
+                        world,
+                        centerX + x,
+                        groundY,
+                        centerZ + z,
+                        material,
+                    )
                 }
             }
         }
@@ -126,7 +137,13 @@ class DetailedArena : ArenaBuilder {
                                 distance > 15 -> Material.STONE_BRICKS
                                 else -> Material.CRACKED_STONE_BRICKS
                             }
-                        placer.setBlock(world, centerX + x, y, centerZ + z, material)
+                        placer.setBlock(
+                            world,
+                            centerX + x,
+                            y,
+                            centerZ + z,
+                            material,
+                        )
                     }
                 }
             }
@@ -159,20 +176,23 @@ class DetailedArena : ArenaBuilder {
                     for (bz in -width..width) {
                         val blockX = centerX + x + bx
                         val blockZ = centerZ + z + bz
-                        placer.setBlock(world, blockX, by, blockZ, Material.DEEPSLATE_BRICKS)
+                        placer.setBlock(
+                            world,
+                            blockX,
+                            by,
+                            blockZ,
+                            Material.DEEPSLATE_BRICKS,
+                        )
                     }
                 }
             }
         }
     }
 
-    private fun buildWindows(
-        world: World,
-        groundY: Int,
-        placer: BlockPlacer,
-    ) {
+    private fun buildWindows(world: World, groundY: Int, placer: BlockPlacer) {
         // Windows at 22.5 degree offsets from buttresses
-        val windowAngles = listOf(22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5)
+        val windowAngles =
+            listOf(22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5)
 
         for (angleDeg in windowAngles) {
             val angleRad = Math.toRadians(angleDeg)
@@ -184,20 +204,23 @@ class DetailedArena : ArenaBuilder {
 
                 // Window height (gothic arch shape)
                 for (wy in groundY + 2..groundY + 6) {
-                    val isArch = wy == groundY + 6 && r > (innerRadius + outerRadius) / 2
+                    val midRadius = (innerRadius + outerRadius) / 2
+                    val isArch = wy == groundY + 6 && r > midRadius
                     if (!isArch) {
-                        placer.setBlock(world, centerX + x, wy, centerZ + z, Material.AIR)
+                        placer.setBlock(
+                            world,
+                            centerX + x,
+                            wy,
+                            centerZ + z,
+                            Material.AIR,
+                        )
                     }
                 }
             }
         }
     }
 
-    private fun buildGate(
-        world: World,
-        groundY: Int,
-        placer: BlockPlacer,
-    ) {
+    private fun buildGate(world: World, groundY: Int, placer: BlockPlacer) {
         // Gate at North (Z = -19, angle 270/-90 degrees)
         val gateZ = -outerRadius.toInt()
         val gateWidth = 5
@@ -207,7 +230,13 @@ class DetailedArena : ArenaBuilder {
         for (x in -gateWidth..gateWidth) {
             for (y in groundY + 1..groundY + gateHeight) {
                 for (z in gateZ..gateZ + 2) {
-                    placer.setBlock(world, centerX + x, y, centerZ + z, Material.AIR)
+                    placer.setBlock(
+                        world,
+                        centerX + x,
+                        y,
+                        centerZ + z,
+                        Material.AIR,
+                    )
                 }
             }
         }
@@ -219,14 +248,26 @@ class DetailedArena : ArenaBuilder {
             val archX = (cos(rad) * archRadius).toInt()
             val archY = (sin(rad) * (gateHeight / 2)).toInt()
 
-            placer.setBlock(world, centerX + archX, groundY + gateHeight + archY, centerZ + gateZ, Material.CHISELED_STONE_BRICKS)
+            placer.setBlock(
+                world,
+                centerX + archX,
+                groundY + gateHeight + archY,
+                centerZ + gateZ,
+                Material.CHISELED_STONE_BRICKS,
+            )
         }
 
         // Gate towers
         for (towerX in listOf(-gateWidth - 1, gateWidth + 1)) {
             for (y in groundY + 1..groundY + wallHeight + 3) {
                 for (z in gateZ..gateZ + 2) {
-                    placer.setBlock(world, centerX + towerX, y, centerZ + z, Material.DEEPSLATE_BRICKS)
+                    placer.setBlock(
+                        world,
+                        centerX + towerX,
+                        y,
+                        centerZ + z,
+                        Material.DEEPSLATE_BRICKS,
+                    )
                 }
             }
         }
@@ -246,7 +287,13 @@ class DetailedArena : ArenaBuilder {
             val outerZ = (sin(rad) * (outerRadius + 0.5)).toInt()
 
             if (angle % 20 == 0) {
-                placer.setBlock(world, centerX + outerX, wallTop + 1, centerZ + outerZ, Material.STONE_BRICK_WALL)
+                placer.setBlock(
+                    world,
+                    centerX + outerX,
+                    wallTop + 1,
+                    centerZ + outerZ,
+                    Material.STONE_BRICK_WALL,
+                )
             }
 
             // Skip inner crenellations at gate
@@ -254,7 +301,13 @@ class DetailedArena : ArenaBuilder {
             val innerZ = (sin(rad) * (innerRadius - 0.5)).toInt()
 
             if (angle % 20 == 0 && innerZ > -18) {
-                placer.setBlock(world, centerX + innerX, wallTop + 1, centerZ + innerZ, Material.STONE_BRICK_WALL)
+                placer.setBlock(
+                    world,
+                    centerX + innerX,
+                    wallTop + 1,
+                    centerZ + innerZ,
+                    Material.STONE_BRICK_WALL,
+                )
             }
         }
     }
@@ -279,7 +332,13 @@ class DetailedArena : ArenaBuilder {
                             (x + z) % 3 == 0 -> Material.MOSSY_STONE_BRICKS
                             else -> Material.STONE_BRICKS
                         }
-                    placer.setBlock(world, centerX + x, groundY, centerZ + z, material)
+                    placer.setBlock(
+                        world,
+                        centerX + x,
+                        groundY,
+                        centerZ + z,
+                        material,
+                    )
                 }
             }
         }
@@ -287,7 +346,13 @@ class DetailedArena : ArenaBuilder {
         // Center podium
         for (x in -2..2) {
             for (z in -2..2) {
-                placer.setBlock(world, centerX + x, groundY + 1, centerZ + z, Material.CHISELED_STONE_BRICKS)
+                placer.setBlock(
+                    world,
+                    centerX + x,
+                    groundY + 1,
+                    centerZ + z,
+                    Material.CHISELED_STONE_BRICKS,
+                )
             }
         }
         placer.setBlock(world, centerX, groundY + 2, centerZ, Material.LANTERN)

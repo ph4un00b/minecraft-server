@@ -64,7 +64,8 @@ class CommandDisplayTest {
         ArenaCommand.entries.forEach { cmd ->
             assertTrue(
                 loggedMessages.contains(cmd.description),
-                "Output should contain description '${cmd.description}' for command ${cmd.primaryName}",
+                "Output should contain description " +
+                    "'${cmd.description}' for command ${cmd.primaryName}",
             )
         }
     }
@@ -92,7 +93,8 @@ class CommandDisplayTest {
             val aliasesString = cmd.aliases.joinToString(", ")
             assertTrue(
                 loggedMessages.contains(aliasesString),
-                "Output should contain aliases '$aliasesString' for command ${cmd.primaryName}",
+                "Output should contain aliases '$aliasesString' " +
+                    "for command ${cmd.primaryName}",
             )
         }
     }
@@ -162,7 +164,8 @@ class CommandDisplayTest {
         val commandCount =
             handler.messages.count { line ->
                 ArenaCommand.entries.any { cmd ->
-                    line.contains("/arena ${cmd.primaryName}") && !line.contains("Use /arena help")
+                    line.contains("/arena ${cmd.primaryName}") &&
+                        !line.contains("Use /arena help")
                 }
             }
 
@@ -170,12 +173,13 @@ class CommandDisplayTest {
         assertEquals(
             ArenaCommand.entries.size,
             commandCount,
-            "Output should contain exactly ${ArenaCommand.entries.size} command entries, but found $commandCount",
+            "Output should contain exactly ${ArenaCommand.entries.size} " +
+                "command entries, but found $commandCount",
         )
     }
 
     @Test
-    fun `displayAllCommands shows usage parameters for commands that have them`() {
+    fun `displayAllCommands shows usage parameters for commands with them`() {
         val logger = Logger.getLogger("TestLogger8")
         val handler = TestLogHandler()
         logger.addHandler(handler)
@@ -187,13 +191,16 @@ class CommandDisplayTest {
         val loggedMessages = handler.messages.joinToString("\n")
 
         // Find commands that have usage parameters
-        val commandsWithParams = ArenaCommand.entries.filter { it.usageParams.isNotEmpty() }
+        val commandsWithParams = ArenaCommand.entries.filter {
+            it.usageParams.isNotEmpty()
+        }
 
         // Verify those parameters are shown in output
         commandsWithParams.forEach { cmd ->
             assertTrue(
                 loggedMessages.contains(cmd.usageParams),
-                "Output should contain usage params '${cmd.usageParams}' for command ${cmd.primaryName}",
+                "Output should contain usage params " +
+                    "'${cmd.usageParams}' for command ${cmd.primaryName}",
             )
         }
     }
@@ -247,19 +254,30 @@ class CommandDisplayTest {
 
         // Find the indices of category headers
         val buildIndex = messages.indexOfFirst { it.contains("BUILD COMMANDS") }
-        val playerIndex = messages.indexOfFirst { it.contains("PLAYER COMMANDS") }
+        val playerIndex = messages.indexOfFirst {
+            it.contains(
+                "PLAYER COMMANDS",
+            )
+        }
 
         assertTrue(buildIndex >= 0, "Should find BUILD COMMANDS header")
-        assertTrue(playerIndex > buildIndex, "PLAYER COMMANDS should come after BUILD COMMANDS")
+        assertTrue(
+            playerIndex > buildIndex,
+            "PLAYER COMMANDS should come after BUILD COMMANDS",
+        )
 
         // Verify build commands appear between build header and next category
         val buildCommands = listOf("simple", "detailed", "rebuild", "sety")
         buildCommands.forEach { cmdName ->
-            val cmdIndex = messages.indexOfFirst { it.contains("/arena $cmdName") }
+            val cmdIndex = messages.indexOfFirst {
+                it.contains(
+                    "/arena $cmdName",
+                )
+            }
             assertTrue(
-                // cmdIndex > buildIndex && cmdIndex < playerIndex,
                 cmdIndex > buildIndex && cmdIndex < playerIndex,
-                "Build command '/arena $cmdName' should appear in BUILD COMMANDS section",
+                "Build command '/arena $cmdName' " +
+                    "should appear in BUILD COMMANDS section",
             )
         }
     }
@@ -281,15 +299,31 @@ class CommandDisplayTest {
         val infoIndex = messages.indexOfFirst { it.contains("INFO COMMANDS") }
 
         assertTrue(npcIndex >= 0, "Should find NPC COMMANDS header")
-        assertTrue(infoIndex > npcIndex, "INFO COMMANDS should come after NPC COMMANDS")
+        assertTrue(
+            infoIndex > npcIndex,
+            "INFO COMMANDS should come after NPC COMMANDS",
+        )
 
         // Verify NPC commands appear between NPC header and next category
-        val npcCommands = listOf("npcs", "togglenpcs", "setnpchealth", "setnpcdamage", "setnpccount", "setnpcattack")
+        val npcCommands =
+            listOf(
+                "npcs",
+                "togglenpcs",
+                "setnpchealth",
+                "setnpcdamage",
+                "setnpccount",
+                "setnpcattack",
+            )
         npcCommands.forEach { cmdName ->
-            val cmdIndex = messages.indexOfFirst { it.contains("/arena $cmdName") }
+            val cmdIndex = messages.indexOfFirst {
+                it.contains(
+                    "/arena $cmdName",
+                )
+            }
             assertTrue(
                 cmdIndex > npcIndex && cmdIndex < infoIndex,
-                "NPC command '/arena $cmdName' should appear in NPC COMMANDS section",
+                "NPC command '/arena $cmdName' " +
+                    "should appear in NPC COMMANDS section",
             )
         }
     }
@@ -307,13 +341,33 @@ class CommandDisplayTest {
         val messages = handler.messages
 
         // Get indices of all category headers
+        val buildIndex =
+            messages.indexOfFirst {
+                it.contains("BUILD COMMANDS")
+            }
+        val playerIndex =
+            messages.indexOfFirst {
+                it.contains("PLAYER COMMANDS")
+            }
+        val npcIndex =
+            messages.indexOfFirst {
+                it.contains("NPC COMMANDS")
+            }
+        val infoIndex =
+            messages.indexOfFirst {
+                it.contains("INFO COMMANDS")
+            }
+        val utilityIndex =
+            messages.indexOfFirst {
+                it.contains("UTILITY COMMANDS")
+            }
         val indices =
             listOf(
-                "BUILD COMMANDS" to messages.indexOfFirst { it.contains("BUILD COMMANDS") },
-                "PLAYER COMMANDS" to messages.indexOfFirst { it.contains("PLAYER COMMANDS") },
-                "NPC COMMANDS" to messages.indexOfFirst { it.contains("NPC COMMANDS") },
-                "INFO COMMANDS" to messages.indexOfFirst { it.contains("INFO COMMANDS") },
-                "UTILITY COMMANDS" to messages.indexOfFirst { it.contains("UTILITY COMMANDS") },
+                "BUILD COMMANDS" to buildIndex,
+                "PLAYER COMMANDS" to playerIndex,
+                "NPC COMMANDS" to npcIndex,
+                "INFO COMMANDS" to infoIndex,
+                "UTILITY COMMANDS" to utilityIndex,
             )
 
         // Verify all categories are found and in ascending order
@@ -322,7 +376,8 @@ class CommandDisplayTest {
             if (i > 0) {
                 assertTrue(
                     index > indices[i - 1].second,
-                    "Category '$name' should come after '${indices[i - 1].first}'",
+                    "Category '$name' should come after " +
+                        "'${indices[i - 1].first}'",
                 )
             }
         }

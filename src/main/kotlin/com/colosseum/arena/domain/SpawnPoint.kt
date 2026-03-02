@@ -7,7 +7,11 @@ import org.bukkit.World
  * Represents a fixed spawn point in the arena
  * 4 positions: East (0), South (1), West (2), North (3)
  */
-enum class SpawnPosition(val index: Int, val displayName: String, val angleDegrees: Double) {
+enum class SpawnPosition(
+    val index: Int,
+    val displayName: String,
+    val angleDegrees: Double,
+) {
     EAST(0, "East", 90.0),
     SOUTH(1, "South", 180.0),
     WEST(2, "West", 270.0),

@@ -47,29 +47,42 @@ class NPCManager(
         Bukkit.getPluginManager().registerEvents(this, plugin)
     }
 
-    fun spawnArenaNPCs(
-        world: World,
-        baseY: Int,
-    ) {
-        plugin.logger.info("$YELLOW[ArenaPlugin] spawnArenaNPCs called with attackType=$npcAttackType$RESET")
+    fun spawnArenaNPCs(world: World, baseY: Int) {
+        plugin.logger.info(
+            "$YELLOW[ArenaPlugin] spawnArenaNPCs called " +
+                "with attackType=$npcAttackType$RESET",
+        )
         if (!npcEnabled) {
-            plugin.logger.info("$YELLOW[ArenaPlugin] NPC spawning disabled$RESET")
+            plugin.logger.info(
+                "$YELLOW[ArenaPlugin] NPC spawning disabled$RESET",
+            )
             return
         }
 
         val citizensPlugin = Bukkit.getPluginManager().getPlugin("Citizens")
         if (citizensPlugin == null || !citizensPlugin.isEnabled) {
-            plugin.logger.severe("[ArenaPlugin] Citizens plugin not found or not enabled!")
-            throw IllegalStateException("Citizens plugin is required but not available")
+            plugin.logger.severe(
+                "[ArenaPlugin] Citizens plugin not found or not enabled!",
+            )
+            throw IllegalStateException(
+                "Citizens plugin is required but not available",
+            )
         }
 
         val sentinelPlugin = Bukkit.getPluginManager().getPlugin("Sentinel")
         if (sentinelPlugin == null || !sentinelPlugin.isEnabled) {
-            plugin.logger.severe("[ArenaPlugin] Sentinel plugin not found or not enabled!")
-            throw IllegalStateException("Sentinel plugin is required but not available")
+            plugin.logger.severe(
+                "[ArenaPlugin] Sentinel plugin not found or not enabled!",
+            )
+            throw IllegalStateException(
+                "Sentinel plugin is required but not available",
+            )
         }
 
-        plugin.logger.info("$YELLOW[ArenaPlugin] Spawning $npcCount Sentinel NPCs at baseY=$baseY$RESET")
+        plugin.logger.info(
+            "$YELLOW[ArenaPlugin] Spawning $npcCount Sentinel NPCs " +
+                "at baseY=$baseY$RESET",
+        )
 
         clearAllNPCs()
 
@@ -78,24 +91,39 @@ class NPCManager(
         SpawnPosition.getAll().forEachIndexed { index, position ->
             if (index < npcCount) {
                 val location = calculateNPCLocation(world, position, baseY)
-                plugin.logger.info("$YELLOW[ArenaPlugin] Spawning Sentinel NPC #$index at $position -> $location")
+                plugin.logger.info(
+                    "$YELLOW[ArenaPlugin] Spawning Sentinel NPC #$index " +
+                        "at $position -> $location",
+                )
 
                 try {
                     val npc = createSentinelNPC(registry, location, index)
                     if (npc != null) {
                         trackedNPCs[npc.id] = position
-                        plugin.logger.info("$YELLOW[ArenaPlugin] Sentinel NPC spawned successfully: ID=${npc.id}$RESET")
+                        plugin.logger.info(
+                            "$YELLOW[ArenaPlugin] Sentinel NPC spawned " +
+                                "successfully: ID=${npc.id}$RESET",
+                        )
                     } else {
-                        plugin.logger.warning("$YELLOW[ArenaPlugin] Failed to spawn NPC at $position$RESET")
+                        plugin.logger.warning(
+                            "$YELLOW[ArenaPlugin] Failed to spawn NPC " +
+                                "at $position$RESET",
+                        )
                     }
                 } catch (e: Exception) {
-                    plugin.logger.severe("$RED[ArenaPlugin] Error spawning NPC: ${e.message}$RESET")
+                    plugin.logger.severe(
+                        "$RED[ArenaPlugin] Error spawning NPC: " +
+                            "${e.message}$RESET",
+                    )
                     e.printStackTrace()
                 }
             }
         }
 
-        plugin.logger.info("$YELLOW[ArenaPlugin] NPC spawning complete. Tracked NPCs: ${trackedNPCs.size}$RESET")
+        plugin.logger.info(
+            "$YELLOW[ArenaPlugin] NPC spawning complete. " +
+                "Tracked NPCs: ${trackedNPCs.size}$RESET",
+        )
     }
 
     private fun calculateNPCLocation(
@@ -118,21 +146,27 @@ class NPCManager(
 
         val npc = registry.createNPC(EntityType.PLAYER, npcName)
         if (npc == null) {
-            plugin.logger.severe("$RED[ArenaPlugin] Failed to create NPC in registry$RESET")
+            plugin.logger.severe(
+                "$RED[ArenaPlugin] Failed to create NPC in registry$RESET",
+            )
             return null
         }
 
         npc.spawn(location)
 
         if (!npc.isSpawned) {
-            plugin.logger.severe("$RED[ArenaPlugin] NPC failed to spawn at location$RESET")
+            plugin.logger.severe(
+                "$RED[ArenaPlugin] NPC failed to spawn at location$RESET",
+            )
             registry.deregister(npc)
             return null
         }
 
         val sentinel = npc.getOrAddTrait(SentinelTrait::class.java)
         if (sentinel == null) {
-            plugin.logger.severe("$RED[ArenaPlugin] Failed to add Sentinel trait to NPC$RESET")
+            plugin.logger.severe(
+                "$RED[ArenaPlugin] Failed to add Sentinel trait to NPC$RESET",
+            )
             npc.destroy()
             return null
         }
@@ -147,28 +181,50 @@ class NPCManager(
 
     private fun equipNPCWithWeapon(npc: NPC) {
         try {
-            plugin.logger.info("$YELLOW[ArenaPlugin] Equipping NPC ${npc.id} with attack type: $npcAttackType$RESET")
+            plugin.logger.info(
+                "$YELLOW[ArenaPlugin] Equipping NPC ${npc.id} " +
+                    "with attack type: $npcAttackType$RESET",
+            )
             when (npcAttackType) {
                 NPCAttackType.SPECTRAL_ARROW -> {
                     // Give bow in main hand
                     val equipment = npc.getOrAddTrait(Equipment::class.java)
-                    equipment.set(Equipment.EquipmentSlot.HAND, ItemStack(Material.BOW))
-                    plugin.logger.info("$YELLOW[ArenaPlugin] Equipped NPC ${npc.id} with bow$RESET")
+                    equipment.set(
+                        Equipment.EquipmentSlot.HAND,
+                        ItemStack(Material.BOW),
+                    )
+                    plugin.logger.info(
+                        "$YELLOW[ArenaPlugin] Equipped NPC ${npc.id} " +
+                            "with bow$RESET",
+                    )
 
-                    // Give spectral arrows in inventory (first slot determines arrow type)
+                    // Give spectral arrows in inventory
                     val inventory = npc.getOrAddTrait(Inventory::class.java)
-                    inventory.contents[0] = ItemStack(Material.SPECTRAL_ARROW, 64)
-                    plugin.logger.info("$YELLOW[ArenaPlugin] Equipped NPC ${npc.id} with spectral arrows$RESET")
+                    val arrows = ItemStack(Material.SPECTRAL_ARROW, 64)
+                    inventory.contents[0] = arrows
+                    plugin.logger.info(
+                        "$YELLOW[ArenaPlugin] Equipped NPC ${npc.id} " +
+                            "with spectral arrows$RESET",
+                    )
                 }
                 NPCAttackType.FIREBALL -> {
                     // Give blaze rod in main hand (shoots fireballs!)
                     val equipment = npc.getOrAddTrait(Equipment::class.java)
-                    equipment.set(Equipment.EquipmentSlot.HAND, ItemStack(Material.BLAZE_ROD))
-                    plugin.logger.info("$YELLOW[ArenaPlugin] Equipped NPC ${npc.id} with blaze rod (fireballs)$RESET")
+                    equipment.set(
+                        Equipment.EquipmentSlot.HAND,
+                        ItemStack(Material.BLAZE_ROD),
+                    )
+                    plugin.logger.info(
+                        "$YELLOW[ArenaPlugin] Equipped NPC ${npc.id} " +
+                            "with blaze rod (fireballs)$RESET",
+                    )
                 }
             }
         } catch (e: Exception) {
-            plugin.logger.warning("$YELLOW[ArenaPlugin] Failed to equip NPC ${npc.id}: ${e.message}$RESET")
+            plugin.logger.warning(
+                "$YELLOW[ArenaPlugin] Failed to equip NPC ${npc.id}: " +
+                    "${e.message}$RESET",
+            )
         }
     }
 
@@ -194,7 +250,10 @@ class NPCManager(
         val npc = CitizensAPI.getNPCRegistry().getNPC(entity) ?: return
 
         if (trackedNPCs.containsKey(npc.id)) {
-            plugin.logger.info("$YELLOW[ArenaPlugin] NPC ${npc.id} died, will stay dead until rebuild$RESET")
+            plugin.logger.info(
+                "$YELLOW[ArenaPlugin] NPC ${npc.id} died, " +
+                    "will stay dead until rebuild$RESET",
+            )
             trackedNPCs.remove(npc.id)
         }
     }
@@ -206,7 +265,9 @@ class NPCManager(
             val npc = registry.getById(npcId)
             if (npc != null) {
                 npc.destroy()
-                plugin.logger.info("$YELLOW[ArenaPlugin] Removed NPC: $npcId$RESET")
+                plugin.logger.info(
+                    "$YELLOW[ArenaPlugin] Removed NPC: $npcId$RESET",
+                )
             }
         }
 
@@ -215,28 +276,38 @@ class NPCManager(
     }
 
     fun getNPCStatus(): String {
-        return "NPCs: ${if (npcEnabled) "Enabled" else "Disabled"}, " +
-            "Count: $npcCount, Health: $npcHealth, Damage: $npcDamage, Attack: $npcAttackType"
+        val status = if (npcEnabled) "Enabled" else "Disabled"
+        return "NPCs: $status, Count: $npcCount, Health: $npcHealth, " +
+            "Damage: $npcDamage, Attack: $npcAttackType"
     }
 
     fun toggleNPCs() {
         npcEnabled = !npcEnabled
-        plugin.logger.info("$YELLOW[ArenaPlugin] NPCs ${if (npcEnabled) "enabled" else "disabled"}$RESET")
+        val status = if (npcEnabled) "enabled" else "disabled"
+        plugin.logger.info(
+            "$YELLOW[ArenaPlugin] NPCs $status$RESET",
+        )
     }
 
     fun setNPCHealth(health: Double) {
         npcHealth = health.coerceAtLeast(1.0)
-        plugin.logger.info("$YELLOW[ArenaPlugin] NPC health set to $npcHealth$RESET")
+        plugin.logger.info(
+            "$YELLOW[ArenaPlugin] NPC health set to $npcHealth$RESET",
+        )
     }
 
     fun setNPCDamage(damage: Double) {
         npcDamage = damage.coerceAtLeast(1.0)
-        plugin.logger.info("$YELLOW[ArenaPlugin] NPC damage set to $npcDamage$RESET")
+        plugin.logger.info(
+            "$YELLOW[ArenaPlugin] NPC damage set to $npcDamage$RESET",
+        )
     }
 
     fun setNPCCount(count: Int) {
         npcCount = count.coerceIn(0, MAX_NPCS)
-        plugin.logger.info("$YELLOW[ArenaPlugin] NPC count set to $npcCount$RESET")
+        plugin.logger.info(
+            "$YELLOW[ArenaPlugin] NPC count set to $npcCount$RESET",
+        )
     }
 
     fun getNPCCount(): Int = npcCount
@@ -252,6 +323,9 @@ class NPCManager(
     fun setNPCAttackType(attackType: NPCAttackType) {
         val oldType = npcAttackType
         npcAttackType = attackType
-        plugin.logger.info("$YELLOW[ArenaPlugin] NPC attack type CHANGED from $oldType to $npcAttackType$RESET")
+        plugin.logger.info(
+            "$YELLOW[ArenaPlugin] NPC attack type CHANGED from $oldType " +
+                "to $npcAttackType$RESET",
+        )
     }
 }
