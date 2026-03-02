@@ -11,6 +11,7 @@ enum class ArenaCommand(
     val usageParams: String = ""
 ) {
     ARROWS("arrows", listOf("arrows", "ar"), "Show arrow status"),
+    CANCEL("cancel", listOf("cancel", "c"), "Cancel pending destructive command"),
     DETAILED("detailed", listOf("detailed", "d"), "Build detailed arena"),
     HELP("help", listOf("help", "h", "?"), "Show this help message"),
     NPCS("npcs", listOf("npcs", "npc"), "Show NPC status"),
