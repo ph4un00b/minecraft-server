@@ -9,12 +9,13 @@ import org.bukkit.entity.Player
  * Handles player-related commands: restock, arrows
  */
 class PlayerCommands(
-    private val arenaManager: ArenaManager
+    private val arenaManager: ArenaManager,
+    private val commandLogger: CommandLogger
 ) {
     fun execute(cmd: ArenaCommand, args: Array<out String>, sender: CommandSender) {
         when (cmd) {
             ArenaCommand.RESTOCK -> handleRestock(sender, args)
-            ArenaCommand.ARROWS -> handleArrows(sender)
+            ArenaCommand.ARROWS -> handleArrows(sender, args)
             else -> throw IllegalArgumentException("Unexpected command: $cmd")
         }
     }
@@ -23,6 +24,7 @@ class PlayerCommands(
         val targetPlayer: Player = if (args.size >= 2) {
             Bukkit.getPlayer(args[1]) ?: run {
                 sender.sendMessage("${ArenaCommand.PREFIX}Error: Player '${args[1]}' not found or not online")
+                commandLogger.logCommand(sender, ArenaCommand.RESTOCK, args, false, mapOf("reason" to "player_not_found", "target" to args[1]))
                 return
             }
         } else {
@@ -30,6 +32,7 @@ class PlayerCommands(
                 sender
             } else {
                 sender.sendMessage("${ArenaCommand.PREFIX}${ArenaCommand.generateCommandUsage(ArenaCommand.RESTOCK)}")
+                commandLogger.logCommand(sender, ArenaCommand.RESTOCK, args, false, mapOf("reason" to "console_without_target"))
                 return
             }
         }
@@ -38,17 +41,28 @@ class PlayerCommands(
         if (success) {
             sender.sendMessage("${ArenaCommand.PREFIX}Restocked ${targetPlayer.name} with 5 arrows and repaired bow")
             targetPlayer.sendMessage("${ArenaCommand.PREFIX}You have been restocked! Bow repaired, +5 arrows (max 10)")
+            val details = mutableMapOf("target" to targetPlayer.name, "success" to "true")
+            if (sender != targetPlayer) {
+                details["executed_by"] = sender.name
+            }
+            commandLogger.logCommand(sender, ArenaCommand.RESTOCK, args, true, details)
         } else {
             sender.sendMessage("${ArenaCommand.PREFIX}Error: ${targetPlayer.name} does not have a bow")
+            commandLogger.logCommand(sender, ArenaCommand.RESTOCK, args, false, mapOf("target" to targetPlayer.name, "reason" to "no_bow"))
         }
     }
 
-    private fun handleArrows(sender: CommandSender) {
+    private fun handleArrows(sender: CommandSender, args: Array<out String>) {
         val currentTracker = arenaManager.arrowTracker
         sender.sendMessage("${ArenaCommand.PREFIX}Arrow Status:")
         sender.sendMessage("  Tracked arrows: ${currentTracker.getArrowCount()}")
         sender.sendMessage("  Max allowed: ${currentTracker.getMaxAllowed()} (5 per player)")
         sender.sendMessage("  Online players: ${Bukkit.getOnlinePlayers().size}")
         sender.sendMessage("  Arrows persist until picked up")
+        commandLogger.logCommand(sender, ArenaCommand.ARROWS, args, true, mapOf(
+            "arrow_count" to currentTracker.getArrowCount().toString(),
+            "max_allowed" to currentTracker.getMaxAllowed().toString(),
+            "online_players" to Bukkit.getOnlinePlayers().size.toString()
+        ))
     }
 }

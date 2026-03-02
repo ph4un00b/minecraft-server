@@ -2,6 +2,7 @@ package com.colosseum.arena
 
 import com.colosseum.arena.commands.ArenaCommand
 import com.colosseum.arena.commands.BuildCommands
+import com.colosseum.arena.commands.CommandLogger
 import com.colosseum.arena.commands.CommandSuggestion
 import com.colosseum.arena.commands.InfoCommands
 import com.colosseum.arena.commands.NPCCommands
@@ -63,6 +64,9 @@ class ArenaPlugin : JavaPlugin(), Listener {
     // Pending destructive operation tracker
     private var pendingOperation: PendingOperation? = null
     private var countdownTask: org.bukkit.scheduler.BukkitTask? = null
+
+    // Command logger for audit trail
+    private lateinit var commandLogger: CommandLogger
 
     /**
      * Data class to track pending destructive commands
@@ -217,7 +221,9 @@ class ArenaPlugin : JavaPlugin(), Listener {
     private fun initializeComponents() {
         try {
             manager = ArenaManager(this)
+            commandLogger = CommandLogger(dataFolder)
             logger.info("${prefix}Components initialized successfully")
+            logger.info("${prefix}Command logging enabled: ${commandLogger.getLogFile().absolutePath}")
         } catch (e: Exception) {
             logger.severe("${prefix}Failed to initialize: ${e.message}")
             throw e
@@ -323,18 +329,20 @@ override fun onCommand(
             }
 
             // Initialize command category handlers with dependency injection
-            val buildCommands = BuildCommands(currentMgr, world)
-            val playerCommands = PlayerCommands(currentMgr)
-            val npcCommands = NPCCommands(currentMgr.npcManager)
-            val infoCommands = InfoCommands(versionInfo, currentMgr)
+            val buildCommands = BuildCommands(currentMgr, world, commandLogger)
+            val playerCommands = PlayerCommands(currentMgr, commandLogger)
+            val npcCommands = NPCCommands(currentMgr.npcManager, commandLogger)
+            val infoCommands = InfoCommands(versionInfo, currentMgr, commandLogger)
 
             // Handle cancel command first
             if (cmd == ArenaCommand.CANCEL) {
                 if (pendingOperation != null) {
                     cancelPendingOperation()
                     sender.sendMessage("${prefix}Cancelled pending ${pendingOperation?.description}")
+                    commandLogger.logCommand(sender, cmd, args, true)
                 } else {
                     sender.sendMessage("${prefix}No pending operation to cancel")
+                    commandLogger.logCommand(sender, cmd, args, false, mapOf("reason" to "no_pending_operation"))
                 }
                 return true
             }
@@ -368,6 +376,7 @@ override fun onCommand(
 
                 // Start countdown
                 startCountdown(sender, description)
+                commandLogger.logCommand(sender, cmd, args, true, mapOf("status" to "queued", "delay" to "5s"))
                 return true
             }
 
@@ -385,9 +394,12 @@ override fun onCommand(
 
                 ArenaCommand.SPAWNS,
                 ArenaCommand.VERSION,
-                ArenaCommand.HELP -> infoCommands.execute(cmd, sender)
+                ArenaCommand.HELP -> infoCommands.execute(cmd, args, sender)
 
-                else -> sender.sendMessage("${prefix}Unknown command")
+                else -> {
+                    sender.sendMessage("${prefix}Unknown command")
+                    commandLogger.logCommand(sender, cmd, args, false, mapOf("reason" to "unknown_command"))
+                }
             }
             return true
         }
@@ -473,7 +485,7 @@ override fun onCommand(
                     val world = server.getWorld("world")
                     val currentMgr = manager
                     if (world != null && currentMgr != null) {
-                        val buildCommands = BuildCommands(currentMgr, world)
+                        val buildCommands = BuildCommands(currentMgr, world, commandLogger)
                         buildCommands.execute(op.command, op.args, op.sender)
                     }
                     cancelPendingOperation()
