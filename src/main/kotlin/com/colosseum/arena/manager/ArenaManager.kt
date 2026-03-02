@@ -1,25 +1,25 @@
 package com.colosseum.arena.manager
 
-import org.bukkit.World
+import com.colosseum.arena.NPCManager
+import com.colosseum.arena.builders.DetailedArena
+import com.colosseum.arena.builders.QueuedBlockPlacer
+import com.colosseum.arena.builders.SimpleArena
+import com.colosseum.arena.combat.ArrowTracker
+import com.colosseum.arena.combat.CombatKit
+import com.colosseum.arena.combat.KitConfig
+import com.colosseum.arena.domain.ArenaConfig
+import com.colosseum.arena.domain.ArenaType
+import com.colosseum.arena.operations.ArenaClearer
+import com.colosseum.arena.operations.PlayerSpawner
+import com.colosseum.arena.operations.YLevelChanger
+import com.colosseum.core.storage.PropertiesStorage
 import org.bukkit.Location
 import org.bukkit.NamespacedKey
+import org.bukkit.World
 import org.bukkit.entity.Player
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
-import com.colosseum.arena.domain.ArenaType
-import com.colosseum.arena.domain.ArenaConfig
-import com.colosseum.arena.builders.SimpleArena
-import com.colosseum.arena.builders.DetailedArena
-import com.colosseum.arena.builders.QueuedBlockPlacer
-import com.colosseum.arena.operations.ArenaClearer
-import com.colosseum.arena.operations.YLevelChanger
-import com.colosseum.arena.operations.PlayerSpawner
-import com.colosseum.arena.combat.CombatKit
-import com.colosseum.arena.combat.ArrowTracker
-import com.colosseum.arena.combat.KitConfig
-import com.colosseum.core.storage.PropertiesStorage
-import com.colosseum.arena.NPCManager
 
 /**
  * Arena Manager - Facade for all arena operations
@@ -27,9 +27,8 @@ import com.colosseum.arena.NPCManager
  * Supports both sync and async arena building
  */
 class ArenaManager(private val plugin: JavaPlugin) {
-
     companion object {
-        const val BLOCKS_PER_TICK = 100  // Number of blocks to place per tick
+        const val BLOCKS_PER_TICK = 100 // Number of blocks to place per tick
         const val PROGRESS_INTERVAL = 20L // Show progress every second (20 ticks)
     }
 
@@ -42,7 +41,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
     val arrowTracker by lazy { ArrowTracker(plugin) }
     val npcManager by lazy { NPCManager(plugin, playerSpawner) }
     private val yLevelChanger by lazy { YLevelChanger(storage, clearer, npcManager) }
-    
+
     private val arenaBuiltKey = NamespacedKey(plugin, "arena_built")
     private val arenaTypeKey = NamespacedKey(plugin, "arena_type")
 
@@ -61,7 +60,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
     fun getNextSpawnPoint(world: World): Location {
         return playerSpawner.getNextSpawnPoint(world, storage.arenaBaseY)
     }
-    
+
     /**
      * Build spawn point floor markers during arena construction
      * Delegates to PlayerSpawner
@@ -69,7 +68,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
     fun buildSpawnMarkers(world: World) {
         playerSpawner.buildSpawnMarkers(world, storage.arenaBaseY)
     }
-    
+
     /**
      * Reset spawn rotation
      * Delegates to PlayerSpawner
@@ -77,12 +76,15 @@ class ArenaManager(private val plugin: JavaPlugin) {
     fun resetSpawnRotation() {
         playerSpawner.resetRotation()
     }
-    
+
     /**
      * Get spawn location name based on coordinates
      * Delegates to PlayerSpawner
      */
-    fun getSpawnLocationName(x: Int, z: Int): String {
+    fun getSpawnLocationName(
+        x: Int,
+        z: Int,
+    ): String {
         return playerSpawner.getSpawnLocationName(x, z)
     }
 
@@ -99,10 +101,10 @@ class ArenaManager(private val plugin: JavaPlugin) {
         // Build new arena
         val type = ArenaType.valueOf(storage.arenaType.uppercase())
         build(world, type)
-        
+
         // Build spawn markers (delegated to PlayerSpawner)
         buildSpawnMarkers(world)
-        
+
         // Spawn NPCs after arena build
         npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
 
@@ -116,25 +118,28 @@ class ArenaManager(private val plugin: JavaPlugin) {
     /**
      * Rebuild arena synchronously (immediate, may cause lag)
      */
-    fun rebuild(world: World, type: ArenaType) {
+    fun rebuild(
+        world: World,
+        type: ArenaType,
+    ) {
         // Clear area blocks
         clearer.clear(world)
-        
+
         // Clear all persistent arrows
         arrowTracker.clearAllArrows()
-        
+
         // Clear NPCs
         npcManager.clearAllNPCs()
 
         // Build new
         build(world, type)
-        
+
         // Build spawn markers (delegated to PlayerSpawner)
         buildSpawnMarkers(world)
-        
+
         // Spawn NPCs after arena build
         npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
-        
+
         // Reset spawn rotation for fresh start
         resetSpawnRotation()
 
@@ -155,7 +160,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
         world: World,
         type: ArenaType,
         onProgress: (Int, Int, Int) -> Unit = { _, _, _ -> },
-        onComplete: () -> Unit = {}
+        onComplete: () -> Unit = {},
     ) {
         if (isBuilding) {
             throw IllegalStateException("Another async build is already in progress")
@@ -165,17 +170,17 @@ class ArenaManager(private val plugin: JavaPlugin) {
 
         // Clear area blocks
         clearer.clear(world)
-        
+
         // Clear all persistent arrows
         arrowTracker.clearAllArrows()
-        
+
         // Clear NPCs
         npcManager.clearAllNPCs()
 
         // Queue all blocks for placement
         val placer = QueuedBlockPlacer()
         val config = ArenaConfig(storage.arenaBaseY, type)
-        
+
         when (type) {
             ArenaType.SIMPLE -> simpleArena.build(world, config, placer)
             ArenaType.DETAILED -> detailedArena.build(world, config, placer)
@@ -193,7 +198,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
                 if (placedBlocks >= totalBlocks) {
                     // Build complete
                     isBuilding = false
-                    
+
                     // Build spawn markers and spawn NPCs
                     buildSpawnMarkers(world)
                     npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
@@ -203,7 +208,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
                     val pdc = world.persistentDataContainer
                     pdc.set(arenaBuiltKey, PersistentDataType.INTEGER, 1)
                     pdc.set(arenaTypeKey, PersistentDataType.STRING, type.name.lowercase())
-                    
+
                     onComplete()
                     cancel()
                     return
@@ -218,7 +223,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
 
                 placedBlocks = endIndex
                 val percentage = (placedBlocks * 100 / totalBlocks)
-                
+
                 // Update progress every second or at milestones
                 if (placedBlocks - lastProgressUpdate >= BLOCKS_PER_TICK * 20 || percentage % 10 == 0) {
                     onProgress(placedBlocks, totalBlocks, percentage)
@@ -231,7 +236,11 @@ class ArenaManager(private val plugin: JavaPlugin) {
     /**
      * Change Y level and rebuild
      */
-    fun changeYLevel(world: World, newY: Int, type: ArenaType) {
+    fun changeYLevel(
+        world: World,
+        newY: Int,
+        type: ArenaType,
+    ) {
         yLevelChanger.change(world, newY) {
             rebuild(world, type)
         }
@@ -283,7 +292,10 @@ class ArenaManager(private val plugin: JavaPlugin) {
     /**
      * Private: delegate build to appropriate builder (sync)
      */
-    private fun build(world: World, type: ArenaType) {
+    private fun build(
+        world: World,
+        type: ArenaType,
+    ) {
         val config = ArenaConfig(storage.arenaBaseY, type)
         when (type) {
             ArenaType.SIMPLE -> simpleArena.build(world, config)

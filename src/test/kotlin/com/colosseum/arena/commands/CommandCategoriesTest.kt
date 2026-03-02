@@ -1,14 +1,13 @@
 package com.colosseum.arena.commands
 
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 /**
  * Comprehensive tests for all command categories
  * Tests routing, validation, and integration
  */
 class CommandCategoriesTest {
-
     // ============================================
     // Build Commands Tests
     // ============================================
@@ -284,11 +283,12 @@ class CommandCategoriesTest {
     }
 
     private fun isNPCCommand(cmd: ArenaCommand?): Boolean {
-        return cmd in listOf(
-            ArenaCommand.NPCS, ArenaCommand.TOGGLE_NPCS,
-            ArenaCommand.SET_NPC_HEALTH, ArenaCommand.SET_NPC_DAMAGE,
-            ArenaCommand.SET_NPC_COUNT, ArenaCommand.SET_NPC_ATTACK
-        )
+        return cmd in
+            listOf(
+                ArenaCommand.NPCS, ArenaCommand.TOGGLE_NPCS,
+                ArenaCommand.SET_NPC_HEALTH, ArenaCommand.SET_NPC_DAMAGE,
+                ArenaCommand.SET_NPC_COUNT, ArenaCommand.SET_NPC_ATTACK,
+            )
     }
 
     private fun isInfoCommand(cmd: ArenaCommand?): Boolean {

@@ -1,7 +1,7 @@
 package com.colosseum.arena.builders
 
-import org.bukkit.World
 import com.colosseum.arena.domain.ArenaConfig
+import org.bukkit.World
 
 /**
  * Interface for arena builders
@@ -14,10 +14,17 @@ interface ArenaBuilder {
      * @param config The arena configuration
      * @param placer The block placer to use (immediate or queued)
      */
-    fun build(world: World, config: ArenaConfig, placer: BlockPlacer = ImmediateBlockPlacer())
+    fun build(
+        world: World,
+        config: ArenaConfig,
+        placer: BlockPlacer = ImmediateBlockPlacer(),
+    )
 
     /**
      * Build spawn markers for the arena
      */
-    fun buildSpawnMarkers(world: World, baseY: Int)
+    fun buildSpawnMarkers(
+        world: World,
+        baseY: Int,
+    )
 }

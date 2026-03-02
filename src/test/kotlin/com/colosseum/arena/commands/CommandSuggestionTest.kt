@@ -1,14 +1,13 @@
 package com.colosseum.arena.commands
 
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 /**
  * Integration tests for CommandSuggestion functionality
  * Tests the Levenshtein distance algorithm and command suggestion logic
  */
 class CommandSuggestionTest {
-
     @Test
     fun `levenshtein distance - identical strings should return 0`() {
         val distance = CommandSuggestion.levenshteinDistance("simple", "simple")

@@ -8,7 +8,7 @@ enum class ArenaCommand(
     val primaryName: String,
     val aliases: List<String>,
     val description: String,
-    val usageParams: String = ""
+    val usageParams: String = "",
 ) {
     ARROWS("arrows", listOf("arrows", "ar"), "Show arrow status"),
     CANCEL("cancel", listOf("cancel", "c"), "Cancel pending destructive command"),
@@ -25,7 +25,8 @@ enum class ArenaCommand(
     SIMPLE("simple", listOf("simple", "s"), "Build simple arena"),
     SPAWNS("spawns", listOf("spawns", "spawn"), "Show spawn info"),
     TOGGLE_NPCS("togglenpcs", listOf("togglenpcs", "toggle-npcs"), "Toggle NPCs on/off"),
-    VERSION("version", listOf("version", "v"), "Show plugin version");
+    VERSION("version", listOf("version", "v"), "Show plugin version"),
+    ;
 
     companion object {
         /**
@@ -49,30 +50,32 @@ enum class ArenaCommand(
          * Get all primary command names sorted alphabetically
          * @return List of primary command names
          */
-        fun getPrimaryNames(): List<String> = entries
-            .sortedBy { it.primaryName }
-            .map { it.primaryName }
+        fun getPrimaryNames(): List<String> =
+            entries
+                .sortedBy { it.primaryName }
+                .map { it.primaryName }
 
         /**
          * Generate usage string for command help
          * Format: /arena [ cmd1 | cmd2 | cmd3 | ... ]
          */
-        fun generateUsageString(): String = getPrimaryNames()
-            .joinToString(" | ")
+        fun generateUsageString(): String =
+            getPrimaryNames()
+                .joinToString(" | ")
 
         /**
          * Generate "Unknown option" help message
          */
-        fun generateUnknownOptionMessage(): String =
-            "Unknown option. Use: ${getPrimaryNames().joinToString(", ")}"
+        fun generateUnknownOptionMessage(): String = "Unknown option. Use: ${getPrimaryNames().joinToString(", ")}"
 
         /**
          * Generate help text with command descriptions
          * Sorted alphabetically by command name
          */
-        fun generateHelpText(): List<String> = entries
-            .sortedBy { it.primaryName }
-            .map { "  /arena ${it.primaryName} - ${it.description}" }
+        fun generateHelpText(): List<String> =
+            entries
+                .sortedBy { it.primaryName }
+                .map { "  /arena ${it.primaryName} - ${it.description}" }
 
         /**
          * Generate usage string for a specific command

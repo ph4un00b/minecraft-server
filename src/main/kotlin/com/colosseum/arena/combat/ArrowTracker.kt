@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap
  * Items have unlimited lifetime (never despawn)
  */
 class ArrowTracker(private val plugin: JavaPlugin) : Listener {
-
     companion object {
         private const val ARROWS_PER_PLAYER = 5
         private const val METADATA_KEY = "arena_arrow"
@@ -85,11 +84,11 @@ class ArrowTracker(private val plugin: JavaPlugin) : Listener {
         val item = world.dropItem(location, itemStack)
 
         // Configure item with Paper API unlimited lifetime
-        item.setUnlimitedLifetime(true)  // Native Paper API - item lives forever!
-        item.setWillAge(false)           // Don't age/despawn
-        item.setCanPlayerPickup(true)    // Allow player pickup
-        item.setCanMobPickup(false)      // Don't let mobs pick it up
-        item.pickupDelay = 0             // Can be picked up immediately
+        item.setUnlimitedLifetime(true) // Native Paper API - item lives forever!
+        item.setWillAge(false) // Don't age/despawn
+        item.setCanPlayerPickup(true) // Allow player pickup
+        item.setCanMobPickup(false) // Don't let mobs pick it up
+        item.pickupDelay = 0 // Can be picked up immediately
 
         // Let gravity work naturally (your requirement #1)
         // item.setGravity(true) // This is default
@@ -128,9 +127,13 @@ class ArrowTracker(private val plugin: JavaPlugin) : Listener {
     @EventHandler
     fun onPlayerQuit(event: PlayerQuitEvent) {
         // Enforce limit immediately when player leaves
-        Bukkit.getScheduler().runTaskLater(plugin, Runnable {
-            enforceArrowLimit()
-        }, 1L)
+        Bukkit.getScheduler().runTaskLater(
+            plugin,
+            Runnable {
+                enforceArrowLimit()
+            },
+            1L,
+        )
     }
 
     /**

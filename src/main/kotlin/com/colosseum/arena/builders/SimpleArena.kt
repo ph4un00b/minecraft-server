@@ -1,8 +1,8 @@
 package com.colosseum.arena.builders
 
-import org.bukkit.World
-import org.bukkit.Material
 import com.colosseum.arena.domain.ArenaConfig
+import org.bukkit.Material
+import org.bukkit.World
 import kotlin.math.sqrt
 
 /**
@@ -17,7 +17,11 @@ class SimpleArena : ArenaBuilder {
     private val outerRadius = 18
     private val wallHeight = 6
 
-    override fun build(world: World, config: ArenaConfig, placer: BlockPlacer) {
+    override fun build(
+        world: World,
+        config: ArenaConfig,
+        placer: BlockPlacer,
+    ) {
         val groundY = config.baseY
 
         // Build ground
@@ -61,7 +65,10 @@ class SimpleArena : ArenaBuilder {
         }
     }
 
-    override fun buildSpawnMarkers(world: World, baseY: Int) {
+    override fun buildSpawnMarkers(
+        world: World,
+        baseY: Int,
+    ) {
         // Simple arena doesn't have spawn markers, so nothing to build
     }
 }

@@ -11,15 +11,16 @@ enum class SpawnPosition(val index: Int, val displayName: String, val angleDegre
     EAST(0, "East", 90.0),
     SOUTH(1, "South", 180.0),
     WEST(2, "West", 270.0),
-    NORTH(3, "North", 0.0);
-    
+    NORTH(3, "North", 0.0),
+    ;
+
     companion object {
         private val values = entries.toTypedArray()
-        
+
         fun getByIndex(index: Int): SpawnPosition {
             return values[index % values.size]
         }
-        
+
         fun getAll(): Array<SpawnPosition> = values
     }
 }
@@ -31,7 +32,7 @@ data class SpawnPoint(
     val position: SpawnPosition,
     val x: Int,
     val y: Int,
-    val z: Int
+    val z: Int,
 ) {
     fun toLocation(world: World): Location {
         return Location(world, x + 0.5, y.toDouble(), z + 0.5)

@@ -4,6 +4,7 @@ import java.util.Properties
 
 plugins {
     kotlin("jvm") version "2.0.21"
+    id("org.jlleitschuh.gradle.ktlint") version "12.1.0"
 }
 
 repositories {
@@ -85,7 +86,7 @@ if (gitHash != "unknown" && gitHash.isNotEmpty()) {
     versionProps.setProperty("version", "1.0+$gitHash")
     versionProps.setProperty("git.hash", gitHash)
     versionProps.setProperty("build.time", buildTime)
-    
+
     // Try to get branch name
     val gitBranch: String by lazy {
         try {
@@ -98,12 +99,12 @@ if (gitHash != "unknown" && gitHash.isNotEmpty()) {
         }
     }
     versionProps.setProperty("git.branch", gitBranch)
-    
+
     // Write back to file
     versionPropsFile.outputStream().use {
         versionProps.store(it, "Updated by Gradle build - Do not edit manually")
     }
-    
+
     println("[BUILD] Updated version.properties with git info: 1.0+$gitHash")
 } else {
     println("[BUILD] Git not available, using committed version.properties values")
@@ -124,19 +125,21 @@ tasks.jar {
     destinationDirectory.set(file("plugins"))
 
     // Include runtime dependencies (Kotlin stdlib) in JAR
-    from(configurations.runtimeClasspath.get().map {
-        if (it.isDirectory) it else zipTree(it)
-    })
+    from(
+        configurations.runtimeClasspath.get().map {
+            if (it.isDirectory) it else zipTree(it)
+        },
+    )
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    
+
     // Add build info to manifest
     manifest {
         attributes(
             "Implementation-Version" to fullVersion,
             "Implementation-Title" to "ColosseumArena",
             "Build-Time" to finalBuildTime,
-            "Git-Commit" to finalGitHash
+            "Git-Commit" to finalGitHash,
         )
     }
 }
@@ -146,9 +149,10 @@ tasks.processResources {
     // Replace tokens in plugin.yml
     filesMatching("plugin.yml") {
         filter<org.apache.tools.ant.filters.ReplaceTokens>(
-            "tokens" to mapOf(
-                "VERSION" to fullVersion
-            )
+            "tokens" to
+                mapOf(
+                    "VERSION" to fullVersion,
+                ),
         )
     }
 }

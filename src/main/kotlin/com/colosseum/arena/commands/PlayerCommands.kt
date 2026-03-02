@@ -10,9 +10,13 @@ import org.bukkit.entity.Player
  */
 class PlayerCommands(
     private val arenaManager: ArenaManager,
-    private val commandLogger: CommandLogger
+    private val commandLogger: CommandLogger,
 ) {
-    fun execute(cmd: ArenaCommand, args: Array<out String>, sender: CommandSender) {
+    fun execute(
+        cmd: ArenaCommand,
+        args: Array<out String>,
+        sender: CommandSender,
+    ) {
         when (cmd) {
             ArenaCommand.RESTOCK -> handleRestock(sender, args)
             ArenaCommand.ARROWS -> handleArrows(sender, args)
@@ -20,22 +24,26 @@ class PlayerCommands(
         }
     }
 
-    private fun handleRestock(sender: CommandSender, args: Array<out String>) {
-        val targetPlayer: Player = if (args.size >= 2) {
-            Bukkit.getPlayer(args[1]) ?: run {
-                sender.sendMessage("${ArenaCommand.PREFIX}Error: Player '${args[1]}' not found or not online")
-                commandLogger.logCommand(sender, ArenaCommand.RESTOCK, args, false, mapOf("reason" to "player_not_found", "target" to args[1]))
-                return
-            }
-        } else {
-            if (sender is Player) {
-                sender
+    private fun handleRestock(
+        sender: CommandSender,
+        args: Array<out String>,
+    ) {
+        val targetPlayer: Player =
+            if (args.size >= 2) {
+                Bukkit.getPlayer(args[1]) ?: run {
+                    sender.sendMessage("${ArenaCommand.PREFIX}Error: Player '${args[1]}' not found or not online")
+                    commandLogger.logCommand(sender, ArenaCommand.RESTOCK, args, false, mapOf("reason" to "player_not_found", "target" to args[1]))
+                    return
+                }
             } else {
-                sender.sendMessage("${ArenaCommand.PREFIX}${ArenaCommand.generateCommandUsage(ArenaCommand.RESTOCK)}")
-                commandLogger.logCommand(sender, ArenaCommand.RESTOCK, args, false, mapOf("reason" to "console_without_target"))
-                return
+                if (sender is Player) {
+                    sender
+                } else {
+                    sender.sendMessage("${ArenaCommand.PREFIX}${ArenaCommand.generateCommandUsage(ArenaCommand.RESTOCK)}")
+                    commandLogger.logCommand(sender, ArenaCommand.RESTOCK, args, false, mapOf("reason" to "console_without_target"))
+                    return
+                }
             }
-        }
 
         val success = arenaManager.restockPlayer(targetPlayer)
         if (success) {
@@ -52,17 +60,26 @@ class PlayerCommands(
         }
     }
 
-    private fun handleArrows(sender: CommandSender, args: Array<out String>) {
+    private fun handleArrows(
+        sender: CommandSender,
+        args: Array<out String>,
+    ) {
         val currentTracker = arenaManager.arrowTracker
         sender.sendMessage("${ArenaCommand.PREFIX}Arrow Status:")
         sender.sendMessage("  Tracked arrows: ${currentTracker.getArrowCount()}")
         sender.sendMessage("  Max allowed: ${currentTracker.getMaxAllowed()} (5 per player)")
         sender.sendMessage("  Online players: ${Bukkit.getOnlinePlayers().size}")
         sender.sendMessage("  Arrows persist until picked up")
-        commandLogger.logCommand(sender, ArenaCommand.ARROWS, args, true, mapOf(
-            "arrow_count" to currentTracker.getArrowCount().toString(),
-            "max_allowed" to currentTracker.getMaxAllowed().toString(),
-            "online_players" to Bukkit.getOnlinePlayers().size.toString()
-        ))
+        commandLogger.logCommand(
+            sender,
+            ArenaCommand.ARROWS,
+            args,
+            true,
+            mapOf(
+                "arrow_count" to currentTracker.getArrowCount().toString(),
+                "max_allowed" to currentTracker.getMaxAllowed().toString(),
+                "online_players" to Bukkit.getOnlinePlayers().size.toString(),
+            ),
+        )
     }
 }

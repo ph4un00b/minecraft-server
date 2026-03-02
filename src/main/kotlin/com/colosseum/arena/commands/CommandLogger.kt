@@ -12,7 +12,6 @@ import java.time.format.DateTimeFormatter
  * Records detailed information including sender, command, location, and outcome
  */
 class CommandLogger(pluginDataFolder: File) {
-
     private val logFile: File
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
@@ -32,41 +31,44 @@ class CommandLogger(pluginDataFolder: File) {
         command: ArenaCommand,
         args: Array<out String>,
         success: Boolean,
-        details: Map<String, String> = emptyMap()
+        details: Map<String, String> = emptyMap(),
     ) {
         val timestamp = LocalDateTime.now().format(dateFormatter)
         val senderName = sender.name
         val senderType = if (sender is Player) "Player" else "Console"
 
         // Build location info if player
-        val locationInfo = if (sender is Player) {
-            val loc = sender.location
-            "world=${loc.world?.name},x=${loc.blockX},y=${loc.blockY},z=${loc.blockZ}"
-        } else {
-            "console"
-        }
+        val locationInfo =
+            if (sender is Player) {
+                val loc = sender.location
+                "world=${loc.world?.name},x=${loc.blockX},y=${loc.blockY},z=${loc.blockZ}"
+            } else {
+                "console"
+            }
 
         // Build details string
-        val detailsStr = if (details.isNotEmpty()) {
-            details.entries.joinToString(", ") { "${it.key}=${it.value}" }
-        } else {
-            ""
-        }
+        val detailsStr =
+            if (details.isNotEmpty()) {
+                details.entries.joinToString(", ") { "${it.key}=${it.value}" }
+            } else {
+                ""
+            }
 
         // Build log entry
-        val logEntry = buildString {
-            append("[$timestamp]")
-            append(" [$senderType:$senderName]")
-            append(" /arena ${command.primaryName}")
-            if (args.size > 1) {
-                append(" ${args.drop(1).joinToString(" ")}")
+        val logEntry =
+            buildString {
+                append("[$timestamp]")
+                append(" [$senderType:$senderName]")
+                append(" /arena ${command.primaryName}")
+                if (args.size > 1) {
+                    append(" ${args.drop(1).joinToString(" ")}")
+                }
+                append(" | Location: $locationInfo")
+                append(" | Success: $success")
+                if (detailsStr.isNotEmpty()) {
+                    append(" | $detailsStr")
+                }
             }
-            append(" | Location: $locationInfo")
-            append(" | Success: $success")
-            if (detailsStr.isNotEmpty()) {
-                append(" | $detailsStr")
-            }
-        }
 
         // Write to file (append mode)
         FileWriter(logFile, true).use { writer ->

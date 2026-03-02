@@ -1,17 +1,16 @@
 package com.colosseum.arena.commands
 
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 import java.util.logging.Handler
 import java.util.logging.Level
-import java.util.logging.Logger
 import java.util.logging.LogRecord
+import java.util.logging.Logger
 
 /**
  * Tests for CommandDisplay - verifies all commands are displayed correctly
  */
 class CommandDisplayTest {
-
     /**
      * Test helper that captures log messages
      */
@@ -23,6 +22,7 @@ class CommandDisplayTest {
         }
 
         override fun flush() {}
+
         override fun close() {}
     }
 
@@ -42,7 +42,7 @@ class CommandDisplayTest {
         ArenaCommand.entries.forEach { cmd ->
             assertTrue(
                 loggedMessages.contains("/arena ${cmd.primaryName}"),
-                "Output should contain command '/arena ${cmd.primaryName}'"
+                "Output should contain command '/arena ${cmd.primaryName}'",
             )
         }
     }
@@ -63,7 +63,7 @@ class CommandDisplayTest {
         ArenaCommand.entries.forEach { cmd ->
             assertTrue(
                 loggedMessages.contains(cmd.description),
-                "Output should contain description '${cmd.description}' for command ${cmd.primaryName}"
+                "Output should contain description '${cmd.description}' for command ${cmd.primaryName}",
             )
         }
     }
@@ -83,7 +83,7 @@ class CommandDisplayTest {
         // Verify aliases section is present
         assertTrue(
             loggedMessages.contains("Aliases:"),
-            "Output should contain 'Aliases:' section"
+            "Output should contain 'Aliases:' section",
         )
 
         // Verify some specific aliases are shown
@@ -91,7 +91,7 @@ class CommandDisplayTest {
             val aliasesString = cmd.aliases.joinToString(", ")
             assertTrue(
                 loggedMessages.contains(aliasesString),
-                "Output should contain aliases '$aliasesString' for command ${cmd.primaryName}"
+                "Output should contain aliases '$aliasesString' for command ${cmd.primaryName}",
             )
         }
     }
@@ -111,16 +111,15 @@ class CommandDisplayTest {
         // Verify purple ANSI color code is used
         assertTrue(
             loggedMessages.contains("\u001B[95m"),
-            "Output should contain purple color code (\\u001B[95m)"
+            "Output should contain purple color code (\\u001B[95m)",
         )
 
         // Verify reset code is used
         assertTrue(
             loggedMessages.contains("\u001B[0m"),
-            "Output should contain reset code (\\u001B[0m)"
+            "Output should contain reset code (\\u001B[0m)",
         )
     }
-
 
     @Test
     fun `displayAllCommands shows header and footer`() {
@@ -137,13 +136,13 @@ class CommandDisplayTest {
         // Verify header is present
         assertTrue(
             loggedMessages.contains("AVAILABLE ARENA COMMANDS"),
-            "Output should contain header 'AVAILABLE ARENA COMMANDS'"
+            "Output should contain header 'AVAILABLE ARENA COMMANDS'",
         )
 
         // Verify footer with help message is present
         assertTrue(
             loggedMessages.contains("Use /arena help"),
-            "Output should contain footer 'Use /arena help'"
+            "Output should contain footer 'Use /arena help'",
         )
     }
 
@@ -159,17 +158,18 @@ class CommandDisplayTest {
 
         // Count lines that contain individual command entries ("/arena " followed by command name)
         // Filter out the footer line that contains "Use /arena help"
-        val commandCount = handler.messages.count { line ->
-            ArenaCommand.entries.any { cmd ->
-                line.contains("/arena ${cmd.primaryName}") && !line.contains("Use /arena help")
+        val commandCount =
+            handler.messages.count { line ->
+                ArenaCommand.entries.any { cmd ->
+                    line.contains("/arena ${cmd.primaryName}") && !line.contains("Use /arena help")
+                }
             }
-        }
 
         // Should have all ArenaCommand entries
         assertEquals(
             ArenaCommand.entries.size,
             commandCount,
-            "Output should contain exactly ${ArenaCommand.entries.size} command entries, but found $commandCount"
+            "Output should contain exactly ${ArenaCommand.entries.size} command entries, but found $commandCount",
         )
     }
 
@@ -192,7 +192,7 @@ class CommandDisplayTest {
         commandsWithParams.forEach { cmd ->
             assertTrue(
                 loggedMessages.contains(cmd.usageParams),
-                "Output should contain usage params '${cmd.usageParams}' for command ${cmd.primaryName}"
+                "Output should contain usage params '${cmd.usageParams}' for command ${cmd.primaryName}",
             )
         }
     }
@@ -212,23 +212,23 @@ class CommandDisplayTest {
         // Verify all category headers are present
         assertTrue(
             loggedMessages.contains("BUILD COMMANDS"),
-            "Output should contain 'BUILD COMMANDS' category"
+            "Output should contain 'BUILD COMMANDS' category",
         )
         assertTrue(
             loggedMessages.contains("PLAYER COMMANDS"),
-            "Output should contain 'PLAYER COMMANDS' category"
+            "Output should contain 'PLAYER COMMANDS' category",
         )
         assertTrue(
             loggedMessages.contains("NPC COMMANDS"),
-            "Output should contain 'NPC COMMANDS' category"
+            "Output should contain 'NPC COMMANDS' category",
         )
         assertTrue(
             loggedMessages.contains("INFO COMMANDS"),
-            "Output should contain 'INFO COMMANDS' category"
+            "Output should contain 'INFO COMMANDS' category",
         )
         assertTrue(
             loggedMessages.contains("UTILITY COMMANDS"),
-            "Output should contain 'UTILITY COMMANDS' category"
+            "Output should contain 'UTILITY COMMANDS' category",
         )
     }
 
@@ -258,7 +258,7 @@ class CommandDisplayTest {
             assertTrue(
                 // cmdIndex > buildIndex && cmdIndex < playerIndex,
                 cmdIndex > buildIndex && cmdIndex < playerIndex,
-                "Build command '/arena $cmdName' should appear in BUILD COMMANDS section"
+                "Build command '/arena $cmdName' should appear in BUILD COMMANDS section",
             )
         }
     }
@@ -288,7 +288,7 @@ class CommandDisplayTest {
             val cmdIndex = messages.indexOfFirst { it.contains("/arena $cmdName") }
             assertTrue(
                 cmdIndex > npcIndex && cmdIndex < infoIndex,
-                "NPC command '/arena $cmdName' should appear in NPC COMMANDS section"
+                "NPC command '/arena $cmdName' should appear in NPC COMMANDS section",
             )
         }
     }
@@ -306,13 +306,14 @@ class CommandDisplayTest {
         val messages = handler.messages
 
         // Get indices of all category headers
-        val indices = listOf(
-            "BUILD COMMANDS" to messages.indexOfFirst { it.contains("BUILD COMMANDS") },
-            "PLAYER COMMANDS" to messages.indexOfFirst { it.contains("PLAYER COMMANDS") },
-            "NPC COMMANDS" to messages.indexOfFirst { it.contains("NPC COMMANDS") },
-            "INFO COMMANDS" to messages.indexOfFirst { it.contains("INFO COMMANDS") },
-            "UTILITY COMMANDS" to messages.indexOfFirst { it.contains("UTILITY COMMANDS") }
-        )
+        val indices =
+            listOf(
+                "BUILD COMMANDS" to messages.indexOfFirst { it.contains("BUILD COMMANDS") },
+                "PLAYER COMMANDS" to messages.indexOfFirst { it.contains("PLAYER COMMANDS") },
+                "NPC COMMANDS" to messages.indexOfFirst { it.contains("NPC COMMANDS") },
+                "INFO COMMANDS" to messages.indexOfFirst { it.contains("INFO COMMANDS") },
+                "UTILITY COMMANDS" to messages.indexOfFirst { it.contains("UTILITY COMMANDS") },
+            )
 
         // Verify all categories are found and in ascending order
         indices.forEachIndexed { i, (name, index) ->
@@ -320,7 +321,7 @@ class CommandDisplayTest {
             if (i > 0) {
                 assertTrue(
                     index > indices[i - 1].second,
-                    "Category '$name' should come after '${indices[i - 1].first}'"
+                    "Category '$name' should come after '${indices[i - 1].first}'",
                 )
             }
         }
