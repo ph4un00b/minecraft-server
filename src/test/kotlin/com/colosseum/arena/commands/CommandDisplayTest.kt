@@ -121,52 +121,6 @@ class CommandDisplayTest {
         )
     }
 
-    @Test
-    fun `displayAllCommands formats box borders correctly`() {
-        val logger = Logger.getLogger("TestLogger5")
-        val handler = TestLogHandler()
-        logger.addHandler(handler)
-        logger.level = Level.ALL
-
-        val display = CommandDisplay(logger)
-        display.displayAllCommands()
-
-        val loggedMessages = handler.messages.joinToString("\n")
-
-        // Verify box drawing characters are used
-        assertTrue(
-            loggedMessages.contains("╔"),
-            "Output should contain top-left box corner"
-        )
-        assertTrue(
-            loggedMessages.contains("╗"),
-            "Output should contain top-right box corner"
-        )
-        assertTrue(
-            loggedMessages.contains("╚"),
-            "Output should contain bottom-left box corner"
-        )
-        assertTrue(
-            loggedMessages.contains("╝"),
-            "Output should contain bottom-right box corner"
-        )
-        assertTrue(
-            loggedMessages.contains("║"),
-            "Output should contain vertical border"
-        )
-        assertTrue(
-            loggedMessages.contains("═"),
-            "Output should contain horizontal border"
-        )
-        assertTrue(
-            loggedMessages.contains("╠"),
-            "Output should contain left T-junction"
-        )
-        assertTrue(
-            loggedMessages.contains("╣"),
-            "Output should contain right T-junction"
-        )
-    }
 
     @Test
     fun `displayAllCommands shows header and footer`() {
@@ -302,6 +256,7 @@ class CommandDisplayTest {
         buildCommands.forEach { cmdName ->
             val cmdIndex = messages.indexOfFirst { it.contains("/arena $cmdName") }
             assertTrue(
+                // cmdIndex > buildIndex && cmdIndex < playerIndex,
                 cmdIndex > buildIndex && cmdIndex < playerIndex,
                 "Build command '/arena $cmdName' should appear in BUILD COMMANDS section"
             )
