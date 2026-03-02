@@ -75,10 +75,9 @@ class CommandDisplayTest {
         display.displayAllCommands()
 
         // Read reference file
-        val referenceFile = java.io.File(
-            "src/test/kotlin/com/colosseum/arena/commands/expected_commands_display.txt",
-        )
-        val referenceLines = referenceFile.readLines()
+        val testDir = "src/test/kotlin/com/colosseum/arena/commands/"
+        val refFile = java.io.File("${testDir}expected_commands_display.txt")
+        val referenceLines = refFile.readLines()
 
         // Get actual output and clean it (remove ANSI codes and prefix)
         val actualLines = handler.messages
