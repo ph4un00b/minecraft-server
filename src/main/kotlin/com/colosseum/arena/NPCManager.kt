@@ -37,12 +37,13 @@ class NPCManager(
         private const val RED = "\u001B[31m"
     }
 
-    private val trackedNPCs = ConcurrentHashMap<Int, SpawnPosition>()
+    private val trackedNPCs =
+        ConcurrentHashMap<Int, Pair<SpawnPosition, NPCAttackType>>()
     private var npcHealth = DEFAULT_HEALTH
     private var npcDamage = DEFAULT_DAMAGE
     private var npcCount = 1
     private var npcEnabled = true
-    private var npcAttackType = NPCAttackType.FIREBALL
+    private var npcAttackType = NPCAttackType.SWORD
     private var currentBatchSize = 1
     private var lastSpawnWorld: World? = null
     private var lastSpawnBaseY: Int = 0
@@ -52,10 +53,8 @@ class NPCManager(
     }
 
     fun spawnArenaNPCs(world: World, baseY: Int) {
-        plugin.logger.info(
-            "$YELLOW[ArenaPlugin] spawnArenaNPCs called " +
-                "with attackType=$npcAttackType$RESET",
-        )
+        val logMsg = "$YELLOW[ArenaPlugin] Spawning with random types$RESET"
+        plugin.logger.info(logMsg)
         if (!npcEnabled) {
             plugin.logger.info(
                 "$YELLOW[ArenaPlugin] NPC spawning disabled$RESET",
@@ -92,22 +91,31 @@ class NPCManager(
         lastSpawnBaseY = baseY
         currentBatchSize = npcCount
 
+        val attackTypes = NPCDecisions.selectRandomTypesForBatch(npcCount)
+
         clearAllNPCs()
 
         val registry = CitizensAPI.getNPCRegistry()
 
         SpawnPosition.getAll().forEachIndexed { index, position ->
             if (index < npcCount) {
+                val attackType = attackTypes[index]
                 val location = calculateNPCLocation(world, position, baseY)
+                val probPct = (attackType.probability * 100).toInt()
                 plugin.logger.info(
                     "$YELLOW[ArenaPlugin] Spawning Sentinel NPC #$index " +
-                        "at $position -> $location",
+                        "($attackType $probPct%) at $position -> $location",
                 )
 
                 try {
-                    val npc = createSentinelNPC(registry, location, index)
+                    val npc = createSentinelNPC(
+                        registry,
+                        location,
+                        index,
+                        attackType,
+                    )
                     if (npc != null) {
-                        trackedNPCs[npc.id] = position
+                        trackedNPCs[npc.id] = position to attackType
                         plugin.logger.info(
                             "$YELLOW[ArenaPlugin] Sentinel NPC spawned " +
                                 "successfully: ID=${npc.id}$RESET",
@@ -149,6 +157,7 @@ class NPCManager(
         registry: NPCRegistry,
         location: Location,
         index: Int,
+        attackType: NPCAttackType,
     ): NPC? {
         val npcName = "$NPC_NAME_PREFIX$index"
 
@@ -181,50 +190,66 @@ class NPCManager(
 
         configureSentinelNPC(sentinel)
 
-        // Equip NPC with weapon based on attack type
-        equipNPCWithWeapon(npc)
+        equipNPCWithWeapon(npc, attackType)
 
         return npc
     }
 
-    private fun equipNPCWithWeapon(npc: NPC) {
+    private fun equipNPCWithWeapon(npc: NPC, attackType: NPCAttackType) {
         try {
             plugin.logger.info(
                 "$YELLOW[ArenaPlugin] Equipping NPC ${npc.id} " +
-                    "with attack type: $npcAttackType$RESET",
+                    "with attack type: $attackType$RESET",
             )
-            when (npcAttackType) {
-                NPCAttackType.SPECTRAL_ARROW -> {
-                    // Give bow in main hand
-                    val equipment = npc.getOrAddTrait(Equipment::class.java)
+            val equipment = npc.getOrAddTrait(Equipment::class.java)
+            when (attackType) {
+                NPCAttackType.SWORD -> {
+                    equipment.set(
+                        Equipment.EquipmentSlot.HAND,
+                        ItemStack(Material.IRON_SWORD),
+                    )
+                }
+                NPCAttackType.AXE -> {
+                    equipment.set(
+                        Equipment.EquipmentSlot.HAND,
+                        ItemStack(Material.IRON_AXE),
+                    )
+                }
+                NPCAttackType.TRIDENT -> {
+                    equipment.set(
+                        Equipment.EquipmentSlot.HAND,
+                        ItemStack(Material.TRIDENT),
+                    )
+                }
+                NPCAttackType.BOW -> {
                     equipment.set(
                         Equipment.EquipmentSlot.HAND,
                         ItemStack(Material.BOW),
                     )
-                    plugin.logger.info(
-                        "$YELLOW[ArenaPlugin] Equipped NPC ${npc.id} " +
-                            "with bow$RESET",
-                    )
-
-                    // Give spectral arrows in inventory
                     val inventory = npc.getOrAddTrait(Inventory::class.java)
                     val arrows = ItemStack(Material.SPECTRAL_ARROW, 64)
                     inventory.contents[0] = arrows
-                    plugin.logger.info(
-                        "$YELLOW[ArenaPlugin] Equipped NPC ${npc.id} " +
-                            "with spectral arrows$RESET",
-                    )
                 }
-                NPCAttackType.FIREBALL -> {
-                    // Give blaze rod in main hand (shoots fireballs!)
-                    val equipment = npc.getOrAddTrait(Equipment::class.java)
+                NPCAttackType.CROSSBOW -> {
                     equipment.set(
                         Equipment.EquipmentSlot.HAND,
-                        ItemStack(Material.BLAZE_ROD),
+                        ItemStack(Material.CROSSBOW),
                     )
-                    plugin.logger.info(
-                        "$YELLOW[ArenaPlugin] Equipped NPC ${npc.id} " +
-                            "with blaze rod (fireballs)$RESET",
+                }
+                NPCAttackType.SHIELD_SWORD -> {
+                    equipment.set(
+                        Equipment.EquipmentSlot.HAND,
+                        ItemStack(Material.IRON_SWORD),
+                    )
+                    equipment.set(
+                        Equipment.EquipmentSlot.OFF_HAND,
+                        ItemStack(Material.SHIELD),
+                    )
+                }
+                NPCAttackType.POLEARM -> {
+                    equipment.set(
+                        Equipment.EquipmentSlot.HAND,
+                        ItemStack(Material.TRIDENT),
                     )
                 }
             }

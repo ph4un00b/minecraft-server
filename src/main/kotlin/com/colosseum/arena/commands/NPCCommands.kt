@@ -248,12 +248,18 @@ class NPCCommands(
         }
         val attackType =
             when (args[1].lowercase()) {
-                "arrow" -> NPCAttackType.SPECTRAL_ARROW
-                "fireball" -> NPCAttackType.FIREBALL
+                "sword" -> NPCAttackType.SWORD
+                "axe" -> NPCAttackType.AXE
+                "trident" -> NPCAttackType.TRIDENT
+                "bow" -> NPCAttackType.BOW
+                "crossbow" -> NPCAttackType.CROSSBOW
+                "shield" -> NPCAttackType.SHIELD_SWORD
+                "polearm" -> NPCAttackType.POLEARM
                 else -> {
                     sender.sendMessage(
                         "${ArenaCommand.PREFIX}Error: Attack type must be " +
-                            "'arrow' or 'fireball'",
+                            "'sword', 'axe', 'trident', 'bow', " +
+                            "'crossbow', 'shield', or 'polearm'",
                     )
                     commandLogger.logCommand(
                         sender,
