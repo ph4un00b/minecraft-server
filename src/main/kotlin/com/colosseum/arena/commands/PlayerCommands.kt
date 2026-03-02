@@ -32,7 +32,13 @@ class PlayerCommands(
             if (args.size >= 2) {
                 Bukkit.getPlayer(args[1]) ?: run {
                     sender.sendMessage("${ArenaCommand.PREFIX}Error: Player '${args[1]}' not found or not online")
-                    commandLogger.logCommand(sender, ArenaCommand.RESTOCK, args, false, mapOf("reason" to "player_not_found", "target" to args[1]))
+                    commandLogger.logCommand(
+                        sender,
+                        ArenaCommand.RESTOCK,
+                        args,
+                        false,
+                        mapOf("reason" to "player_not_found", "target" to args[1]),
+                    )
                     return
                 }
             } else {

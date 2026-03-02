@@ -51,6 +51,27 @@ This is a Kotlin-based Minecraft PaperMC plugin that auto-generates gothic colos
 ./gradlew test --tests "com.colosseum.arena.*"
 ```
 
+## Code Formatting
+
+This project uses **ktlint** via the `jlleitschuh/ktlint-gradle` plugin for Kotlin code formatting.
+
+### Format Commands
+```bash
+# Check code style (read-only, reports violations)
+./gradlew ktlintCheck
+
+# Auto-format code (fixes issues where possible)
+./gradlew ktlintFormat
+
+# Check runs both tests and ktlintCheck
+./gradlew check
+```
+
+### Formatting Guidelines
+- Run `./gradlew ktlintFormat` before committing to ensure consistent code style
+- The `check` task includes ktlint validation - CI will fail on style violations
+- Formatting rules are enforced by ktlint (trailing commas, indentation, import ordering, etc.)
+
 ## Git Workflow
 
 This project follows **GitHub Flow** with `--no-ff` merges for easy rollbacks.

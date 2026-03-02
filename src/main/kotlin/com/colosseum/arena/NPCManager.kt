@@ -215,7 +215,8 @@ class NPCManager(
     }
 
     fun getNPCStatus(): String {
-        return "NPCs: ${if (npcEnabled) "Enabled" else "Disabled"}, Count: $npcCount, Health: $npcHealth, Damage: $npcDamage, Attack: $npcAttackType"
+        return "NPCs: ${if (npcEnabled) "Enabled" else "Disabled"}, " +
+            "Count: $npcCount, Health: $npcHealth, Damage: $npcDamage, Attack: $npcAttackType"
     }
 
     fun toggleNPCs() {
