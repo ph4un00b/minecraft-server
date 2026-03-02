@@ -5,5 +5,5 @@ package com.colosseum.arena.domain
  */
 enum class ArenaType {
     SIMPLE,
-    DETAILED
+    DETAILED,
 }

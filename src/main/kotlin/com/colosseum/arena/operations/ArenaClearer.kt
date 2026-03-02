@@ -1,7 +1,7 @@
 package com.colosseum.arena.operations
 
-import org.bukkit.World
 import org.bukkit.Material
+import org.bukkit.World
 
 /**
  * Clears the arena area completely

@@ -10,32 +10,31 @@ import java.util.Properties
  * Single source of truth for arena settings
  */
 class PropertiesStorage(private val logger: (String) -> Unit) {
-    
     companion object {
         private const val FILENAME = "phau.properties"
         private const val DEFAULT_BASE_Y = 64
         private const val DEFAULT_TYPE = "detailed"
     }
-    
+
     private val propsFile = File(FILENAME)
     private val properties = Properties()
-    
+
     /**
      * Current arena base Y level
      */
     var arenaBaseY: Int = DEFAULT_BASE_Y
         private set
-    
+
     /**
      * Current arena type (simple or detailed)
      */
     var arenaType: String = DEFAULT_TYPE
         private set
-    
+
     init {
         load()
     }
-    
+
     /**
      * Load all properties from file
      */
@@ -43,17 +42,30 @@ class PropertiesStorage(private val logger: (String) -> Unit) {
         return try {
             if (propsFile.exists()) {
                 FileInputStream(propsFile).use { properties.load(it) }
-                
+
                 // Parse values
-                arenaBaseY = properties.getProperty("arena-base-y", DEFAULT_BASE_Y.toString())
-                    .toIntOrNull() ?: DEFAULT_BASE_Y
-                arenaType = properties.getProperty("arena-type", DEFAULT_TYPE)
-                    ?.lowercase() ?: DEFAULT_TYPE
-                
-                logger("Loaded arena-base-y=$arenaBaseY, arena-type=$arenaType from $FILENAME")
+                val baseYProp =
+                    properties.getProperty(
+                        "arena-base-y",
+                        DEFAULT_BASE_Y.toString(),
+                    )
+                arenaBaseY = baseYProp.toIntOrNull() ?: DEFAULT_BASE_Y
+                val typeProp = properties.getProperty(
+                    "arena-type",
+                    DEFAULT_TYPE,
+                )
+                arenaType = typeProp?.lowercase() ?: DEFAULT_TYPE
+
+                logger(
+                    "Loaded arena-base-y=$arenaBaseY, arena-type=$arenaType " +
+                        "from $FILENAME",
+                )
                 true
             } else {
-                logger("$FILENAME not found, using defaults: base-y=$DEFAULT_BASE_Y, type=$DEFAULT_TYPE")
+                logger(
+                    "$FILENAME not found, using defaults: " +
+                        "base-y=$DEFAULT_BASE_Y, type=$DEFAULT_TYPE",
+                )
                 arenaBaseY = DEFAULT_BASE_Y
                 arenaType = DEFAULT_TYPE
                 false
@@ -65,7 +77,7 @@ class PropertiesStorage(private val logger: (String) -> Unit) {
             false
         }
     }
-    
+
     /**
      * Save all properties to file
      */
@@ -81,7 +93,7 @@ class PropertiesStorage(private val logger: (String) -> Unit) {
             false
         }
     }
-    
+
     /**
      * Update arena base Y level
      */
@@ -90,7 +102,7 @@ class PropertiesStorage(private val logger: (String) -> Unit) {
         properties.setProperty("arena-base-y", newY.toString())
         return save()
     }
-    
+
     /**
      * Update arena type
      */
@@ -104,7 +116,7 @@ class PropertiesStorage(private val logger: (String) -> Unit) {
         properties.setProperty("arena-type", normalizedType)
         return save()
     }
-    
+
     /**
      * Get configuration summary for display
      */

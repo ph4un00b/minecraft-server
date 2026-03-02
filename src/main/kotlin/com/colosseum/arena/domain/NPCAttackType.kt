@@ -5,5 +5,5 @@ package com.colosseum.arena.domain
  */
 enum class NPCAttackType {
     SPECTRAL_ARROW,
-    FIREBALL
+    FIREBALL,
 }

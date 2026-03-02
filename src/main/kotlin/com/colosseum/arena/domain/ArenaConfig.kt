@@ -6,5 +6,5 @@ package com.colosseum.arena.domain
  */
 data class ArenaConfig(
     val baseY: Int,
-    val type: ArenaType
+    val type: ArenaType,
 )

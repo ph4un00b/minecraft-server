@@ -1,14 +1,15 @@
 package com.colosseum.arena.commands
 
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.*
 
 /**
  * Comprehensive tests for all command categories
  * Tests routing, validation, and integration
  */
 class CommandCategoriesTest {
-
     // ============================================
     // Build Commands Tests
     // ============================================
@@ -134,15 +135,42 @@ class CommandCategoriesTest {
     @Test
     fun `npc commands - aliases work`() {
         assertEquals(ArenaCommand.NPCS, ArenaCommand.fromString("npc"))
-        assertEquals(ArenaCommand.TOGGLE_NPCS, ArenaCommand.fromString("toggle-npcs"))
-        assertEquals(ArenaCommand.SET_NPC_HEALTH, ArenaCommand.fromString("set-npc-health"))
-        assertEquals(ArenaCommand.SET_NPC_HEALTH, ArenaCommand.fromString("npchealth"))
-        assertEquals(ArenaCommand.SET_NPC_DAMAGE, ArenaCommand.fromString("set-npc-damage"))
-        assertEquals(ArenaCommand.SET_NPC_DAMAGE, ArenaCommand.fromString("npcdamage"))
-        assertEquals(ArenaCommand.SET_NPC_COUNT, ArenaCommand.fromString("set-npc-count"))
-        assertEquals(ArenaCommand.SET_NPC_COUNT, ArenaCommand.fromString("npccount"))
-        assertEquals(ArenaCommand.SET_NPC_ATTACK, ArenaCommand.fromString("set-npc-attack"))
-        assertEquals(ArenaCommand.SET_NPC_ATTACK, ArenaCommand.fromString("npcattack"))
+        assertEquals(
+            ArenaCommand.TOGGLE_NPCS,
+            ArenaCommand.fromString("toggle-npcs"),
+        )
+        assertEquals(
+            ArenaCommand.SET_NPC_HEALTH,
+            ArenaCommand.fromString("set-npc-health"),
+        )
+        assertEquals(
+            ArenaCommand.SET_NPC_HEALTH,
+            ArenaCommand.fromString("npchealth"),
+        )
+        assertEquals(
+            ArenaCommand.SET_NPC_DAMAGE,
+            ArenaCommand.fromString("set-npc-damage"),
+        )
+        assertEquals(
+            ArenaCommand.SET_NPC_DAMAGE,
+            ArenaCommand.fromString("npcdamage"),
+        )
+        assertEquals(
+            ArenaCommand.SET_NPC_COUNT,
+            ArenaCommand.fromString("set-npc-count"),
+        )
+        assertEquals(
+            ArenaCommand.SET_NPC_COUNT,
+            ArenaCommand.fromString("npccount"),
+        )
+        assertEquals(
+            ArenaCommand.SET_NPC_ATTACK,
+            ArenaCommand.fromString("set-npc-attack"),
+        )
+        assertEquals(
+            ArenaCommand.SET_NPC_ATTACK,
+            ArenaCommand.fromString("npcattack"),
+        )
     }
 
     // ============================================
@@ -206,8 +234,14 @@ class CommandCategoriesTest {
 
         // Check that each command has description
         ArenaCommand.entries.forEach { cmd ->
-            val found = helpText.any { it.contains(cmd.primaryName) && it.contains(cmd.description) }
-            assertTrue(found, "Help text should contain command '${cmd.primaryName}' with description")
+            val found = helpText.any {
+                it.contains(cmd.primaryName) && it.contains(cmd.description)
+            }
+            assertTrue(
+                found,
+                "Help text should contain command " +
+                    "'${cmd.primaryName}' with description",
+            )
         }
     }
 
@@ -219,7 +253,9 @@ class CommandCategoriesTest {
         val setYUsage = ArenaCommand.generateCommandUsage(ArenaCommand.SET_Y)
         assertEquals("Usage: /arena sety <y-level>", setYUsage)
 
-        val restockUsage = ArenaCommand.generateCommandUsage(ArenaCommand.RESTOCK)
+        val restockUsage = ArenaCommand.generateCommandUsage(
+            ArenaCommand.RESTOCK,
+        )
         assertEquals("Usage: /arena restock [player]", restockUsage)
     }
 
@@ -254,20 +290,31 @@ class CommandCategoriesTest {
     fun `all commands have unique primary names`() {
         val primaryNames = ArenaCommand.entries.map { it.primaryName }
         val uniqueNames = primaryNames.toSet()
-        assertEquals(primaryNames.size, uniqueNames.size, "All primary names should be unique")
+        assertEquals(
+            primaryNames.size,
+            uniqueNames.size,
+            "All primary names should be unique",
+        )
     }
 
     @Test
     fun `all commands have at least one alias`() {
         ArenaCommand.entries.forEach { cmd ->
-            assertTrue(cmd.aliases.isNotEmpty(), "Command '${cmd.primaryName}' should have at least one alias")
+            assertTrue(
+                cmd.aliases.isNotEmpty(),
+                "Command '${cmd.primaryName}' should have at least one alias",
+            )
         }
     }
 
     @Test
     fun `primary name is always first in aliases`() {
         ArenaCommand.entries.forEach { cmd ->
-            assertEquals(cmd.primaryName, cmd.aliases.first(), "Primary name should be first alias for '${cmd.primaryName}'")
+            assertEquals(
+                cmd.primaryName,
+                cmd.aliases.first(),
+                "Primary name should be first alias for '${cmd.primaryName}'",
+            )
         }
     }
 
@@ -276,7 +323,13 @@ class CommandCategoriesTest {
     // ============================================
 
     private fun isBuildCommand(cmd: ArenaCommand?): Boolean {
-        return cmd in listOf(ArenaCommand.SIMPLE, ArenaCommand.DETAILED, ArenaCommand.REBUILD, ArenaCommand.SET_Y)
+        return cmd in
+            listOf(
+                ArenaCommand.SIMPLE,
+                ArenaCommand.DETAILED,
+                ArenaCommand.REBUILD,
+                ArenaCommand.SET_Y,
+            )
     }
 
     private fun isPlayerCommand(cmd: ArenaCommand?): Boolean {
@@ -284,14 +337,20 @@ class CommandCategoriesTest {
     }
 
     private fun isNPCCommand(cmd: ArenaCommand?): Boolean {
-        return cmd in listOf(
-            ArenaCommand.NPCS, ArenaCommand.TOGGLE_NPCS,
-            ArenaCommand.SET_NPC_HEALTH, ArenaCommand.SET_NPC_DAMAGE,
-            ArenaCommand.SET_NPC_COUNT, ArenaCommand.SET_NPC_ATTACK
-        )
+        return cmd in
+            listOf(
+                ArenaCommand.NPCS, ArenaCommand.TOGGLE_NPCS,
+                ArenaCommand.SET_NPC_HEALTH, ArenaCommand.SET_NPC_DAMAGE,
+                ArenaCommand.SET_NPC_COUNT, ArenaCommand.SET_NPC_ATTACK,
+            )
     }
 
     private fun isInfoCommand(cmd: ArenaCommand?): Boolean {
-        return cmd in listOf(ArenaCommand.SPAWNS, ArenaCommand.VERSION, ArenaCommand.HELP)
+        return cmd in
+            listOf(
+                ArenaCommand.SPAWNS,
+                ArenaCommand.VERSION,
+                ArenaCommand.HELP,
+            )
     }
 }

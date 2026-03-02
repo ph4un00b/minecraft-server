@@ -1,0 +1,89 @@
+╔══════════════════════════════════════════════════════════╗
+║ AVAILABLE ARENA COMMANDS                                 ║
+╠──────────────────────────────────────────────────────────╣
+║                                                          ║
+║ 🏗️ BUILD COMMANDS                                        ║
+║ ═════════════════                                        ║
+║    /arena simple                                         ║
+║       Aliases: simple, s                                 ║
+║       Build simple arena                                 ║
+║                                                          ║
+║    /arena detailed                                       ║
+║       Aliases: detailed, d                               ║
+║       Build detailed arena                               ║
+║                                                          ║
+║    /arena rebuild                                        ║
+║       Aliases: rebuild, r                                ║
+║       Rebuild current arena                              ║
+║                                                          ║
+║    /arena sety <y-level>                                 ║
+║       Aliases: sety, set-y                               ║
+║       Change arena Y level                               ║
+║                                                          ║
+╠──────────────────────────────────────────────────────────╣
+║                                                          ║
+║ 🎯 PLAYER COMMANDS                                       ║
+║ ══════════════════                                       ║
+║    /arena restock [player]                               ║
+║       Aliases: restock, rs                               ║
+║       Restock arrows                                     ║
+║                                                          ║
+║    /arena arrows                                         ║
+║       Aliases: arrows, ar                                ║
+║       Show arrow status                                  ║
+║                                                          ║
+╠──────────────────────────────────────────────────────────╣
+║                                                          ║
+║ 🤖 NPC COMMANDS                                          ║
+║ ═══════════════                                          ║
+║    /arena npcs                                           ║
+║       Aliases: npcs, npc                                 ║
+║       Show NPC status                                    ║
+║                                                          ║
+║    /arena togglenpcs                                     ║
+║       Aliases: togglenpcs, toggle-npcs                   ║
+║       Toggle NPCs on/off                                 ║
+║                                                          ║
+║    /arena setnpchealth <health>                          ║
+║       Aliases: setnpchealth, set-npc-health, npchealth   ║
+║       Set NPC health                                     ║
+║                                                          ║
+║    /arena setnpcdamage <damage>                          ║
+║       Aliases: setnpcdamage, set-npc-damage, npcdamage   ║
+║       Set NPC damage                                     ║
+║                                                          ║
+║    /arena setnpccount <0-4>                              ║
+║       Aliases: setnpccount, set-npc-count, npccount      ║
+║       Set NPC count                                      ║
+║                                                          ║
+║    /arena setnpcattack <arrow|fireball>                  ║
+║       Aliases: setnpcattack, set-npc-attack, npcattack   ║
+║       Set NPC attack type                                ║
+║                                                          ║
+╠──────────────────────────────────────────────────────────╣
+║                                                          ║
+║ ℹ️ INFO COMMANDS                                          ║
+║ ═══════════════                                          ║
+║    /arena spawns                                         ║
+║       Aliases: spawns, spawn                             ║
+║       Show spawn info                                    ║
+║                                                          ║
+║    /arena version                                        ║
+║       Aliases: version, v                                ║
+║       Show plugin version                                ║
+║                                                          ║
+║    /arena help                                           ║
+║       Aliases: help, h, ?                                ║
+║       Show this help message                             ║
+║                                                          ║
+╠──────────────────────────────────────────────────────────╣
+║                                                          ║
+║ ⚙️ UTILITY COMMANDS                                       ║
+║ ══════════════════                                       ║
+║    /arena cancel                                         ║
+║       Aliases: cancel, c                                 ║
+║       Cancel pending destructive command                 ║
+║                                                          ║
+║                                                          ║
+║ Use /arena help for detailed usage information - phau    ║
+╚══════════════════════════════════════════════════════════╝

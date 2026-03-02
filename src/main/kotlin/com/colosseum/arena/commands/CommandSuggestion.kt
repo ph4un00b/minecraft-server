@@ -5,7 +5,6 @@ package com.colosseum.arena.commands
  * Extracted for testability and single responsibility
  */
 object CommandSuggestion {
-
     /**
      * Suggest a similar command based on Levenshtein distance
      * @param input The user input to check
@@ -39,11 +38,12 @@ object CommandSuggestion {
             costs[0] = i + 1
             var nw = i
             for (j in s2.indices) {
-                val cj = minOf(
-                    costs[j + 1] + 1,
-                    costs[j] + 1,
-                    nw + if (s1[i] == s2[j]) 0 else 1
-                )
+                val cj =
+                    minOf(
+                        costs[j + 1] + 1,
+                        costs[j] + 1,
+                        nw + if (s1[i] == s2[j]) 0 else 1,
+                    )
                 nw = costs[j + 1]
                 costs[j + 1] = cj
             }
