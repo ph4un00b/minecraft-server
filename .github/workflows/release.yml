@@ -1,0 +1,181 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate Release Notes
+        id: release_notes
+        run: |
+          # Get the current tag
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+          
+          # Get previous tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${CURRENT_TAG}^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            # First release - get all commits
+            COMMITS=$(git log --pretty=format:"- %s" --no-merges)
+          else
+            # Get commits between tags
+            COMMITS=$(git log --pretty=format:"- %s" --no-merges ${PREVIOUS_TAG}..${CURRENT_TAG})
+          fi
+          
+          # Categorize commits
+          FEATURES=$(echo "$COMMITS" | grep -E "^-\\s*(feat|add)" || true)
+          FIXES=$(echo "$COMMITS" | grep -E "^-\\s*fix" || true)
+          TESTS=$(echo "$COMMITS" | grep -E "^-\\s*test" || true)
+          REFACTORS=$(echo "$COMMITS" | grep -E "^-\\s*refactor" || true)
+          CHORES=$(echo "$COMMITS" | grep -E "^-\\s*chore" || true)
+          DOCS=$(echo "$COMMITS" | grep -E "^-\\s*docs" || true)
+          
+          # Build release notes
+          NOTES="## What's Changed\\n\\n"
+          
+          if [ -n "$FEATURES" ]; then
+            NOTES="${NOTES}### ✨ Features\\n${FEATURES}\\n\\n"
+          fi
+          
+          if [ -n "$FIXES" ]; then
+            NOTES="${NOTES}### 🐛 Bug Fixes\\n${FIXES}\\n\\n"
+          fi
+          
+          if [ -n "$TESTS" ]; then
+            NOTES="${NOTES}### 🧪 Tests\\n${TESTS}\\n\\n"
+          fi
+          
+          if [ -n "$REFACTORS" ]; then
+            NOTES="${NOTES}### ♻️ Refactoring\\n${REFACTORS}\\n\\n"
+          fi
+          
+          if [ -n "$CHORES" ]; then
+            NOTES="${NOTES}### 🔧 Chores\\n${CHORES}\\n\\n"
+          fi
+          
+          if [ -n "$DOCS" ]; then
+            NOTES="${NOTES}### 📝 Documentation\\n${DOCS}\\n\\n"
+          fi
+          
+          # Add full changelog link
+          if [ -n "$PREVIOUS_TAG" ]; then
+            NOTES="${NOTES}**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${CURRENT_TAG}"
+          fi
+          
+          # Output for GitHub Actions
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body: ${{ steps.release_notes.outputs.notes }}
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-changelog:
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update CHANGELOG.md
+        run: |
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+          DATE=$(date +%Y-%m-%d)
+          
+          # Create new version entry
+          NEW_ENTRY="## [${CURRENT_TAG}] - ${DATE}\\n\\n"
+          
+          # Get previous tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 ${CURRENT_TAG}^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s" --no-merges)
+          else
+            COMMITS=$(git log --pretty=format:"- %s" --no-merges ${PREVIOUS_TAG}..${CURRENT_TAG})
+          fi
+          
+          # Categorize commits
+          FEATURES=$(echo "$COMMITS" | grep -E "^-\\s*(feat|add)" || true)
+          FIXES=$(echo "$COMMITS" | grep -E "^-\\s*fix" || true)
+          TESTS=$(echo "$COMMITS" | grep -E "^-\\s*test" || true)
+          REFACTORS=$(echo "$COMMITS" | grep -E "^-\\s*refactor" || true)
+          CHORES=$(echo "$COMMITS" | grep -E "^-\\s*chore" || true)
+          DOCS=$(echo "$COMMITS" | grep -E "^-\\s*docs" || true)
+          
+          # Build sections
+          if [ -n "$FEATURES" ]; then
+            NEW_ENTRY="${NEW_ENTRY}### Added\\n${FEATURES}\\n\\n"
+          fi
+          
+          if [ -n "$FIXES" ]; then
+            NEW_ENTRY="${NEW_ENTRY}### Fixed\\n${FIXES}\\n\\n"
+          fi
+          
+          if [ -n "$TESTS" ]; then
+            NEW_ENTRY="${NEW_ENTRY}### Tests\\n${TESTS}\\n\\n"
+          fi
+          
+          if [ -n "$REFACTORS" ]; then
+            NEW_ENTRY="${NEW_ENTRY}### Changed\\n${REFACTORS}\\n\\n"
+          fi
+          
+          if [ -n "$CHORES" ]; then
+            NEW_ENTRY="${NEW_ENTRY}### Chores\\n${CHORES}\\n\\n"
+          fi
+          
+          if [ -n "$DOCS" ]; then
+            NEW_ENTRY="${NEW_ENTRY}### Documentation\\n${DOCS}\\n\\n"
+          fi
+          
+          # Create temporary file with new entry
+          {
+            echo "# Changelog"
+            echo ""
+            echo "All notable changes to this project will be documented in this file."
+            echo ""
+            echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),"
+            echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
+            echo ""
+            echo "## [Unreleased]"
+            echo ""
+            echo -e "$NEW_ENTRY"
+            # Get existing changelog content after Unreleased section
+            tail -n +7 CHANGELOG.md | grep -v "^## \\[Unreleased\\]" || true
+          } > CHANGELOG.md.new
+          
+          mv CHANGELOG.md.new CHANGELOG.md
+          
+          # Update comparison links at the end
+          if [ -n "$PREVIOUS_TAG" ]; then
+            # Remove empty lines at end
+            sed -i -e :a -e '/^\n*$/{$d;N;};/\n$/ba' CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "[${CURRENT_TAG}]: https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${CURRENT_TAG}" >> CHANGELOG.md
+          fi
+
+      - name: Commit and Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "docs: update CHANGELOG.md for ${GITHUB_REF#refs/tags/}" || echo "No changes to commit"
+          git push || echo "Nothing to push"
