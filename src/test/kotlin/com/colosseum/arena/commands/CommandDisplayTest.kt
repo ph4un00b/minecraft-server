@@ -242,4 +242,132 @@ class CommandDisplayTest {
             )
         }
     }
+
+    @Test
+    fun `displayAllCommands shows category headers`() {
+        val logger = Logger.getLogger("TestLogger9")
+        val handler = TestLogHandler()
+        logger.addHandler(handler)
+        logger.level = Level.ALL
+
+        val display = CommandDisplay(logger)
+        display.displayAllCommands()
+
+        val loggedMessages = handler.messages.joinToString("\n")
+
+        // Verify all category headers are present
+        assertTrue(
+            loggedMessages.contains("BUILD COMMANDS"),
+            "Output should contain 'BUILD COMMANDS' category"
+        )
+        assertTrue(
+            loggedMessages.contains("PLAYER COMMANDS"),
+            "Output should contain 'PLAYER COMMANDS' category"
+        )
+        assertTrue(
+            loggedMessages.contains("NPC COMMANDS"),
+            "Output should contain 'NPC COMMANDS' category"
+        )
+        assertTrue(
+            loggedMessages.contains("INFO COMMANDS"),
+            "Output should contain 'INFO COMMANDS' category"
+        )
+        assertTrue(
+            loggedMessages.contains("UTILITY COMMANDS"),
+            "Output should contain 'UTILITY COMMANDS' category"
+        )
+    }
+
+    @Test
+    fun `displayAllCommands groups build commands together`() {
+        val logger = Logger.getLogger("TestLogger10")
+        val handler = TestLogHandler()
+        logger.addHandler(handler)
+        logger.level = Level.ALL
+
+        val display = CommandDisplay(logger)
+        display.displayAllCommands()
+
+        val messages = handler.messages
+
+        // Find the indices of category headers
+        val buildIndex = messages.indexOfFirst { it.contains("BUILD COMMANDS") }
+        val playerIndex = messages.indexOfFirst { it.contains("PLAYER COMMANDS") }
+
+        assertTrue(buildIndex >= 0, "Should find BUILD COMMANDS header")
+        assertTrue(playerIndex > buildIndex, "PLAYER COMMANDS should come after BUILD COMMANDS")
+
+        // Verify build commands appear between build header and next category
+        val buildCommands = listOf("simple", "detailed", "rebuild", "sety")
+        buildCommands.forEach { cmdName ->
+            val cmdIndex = messages.indexOfFirst { it.contains("/arena $cmdName") }
+            assertTrue(
+                cmdIndex > buildIndex && cmdIndex < playerIndex,
+                "Build command '/arena $cmdName' should appear in BUILD COMMANDS section"
+            )
+        }
+    }
+
+    @Test
+    fun `displayAllCommands groups npc commands together`() {
+        val logger = Logger.getLogger("TestLogger11")
+        val handler = TestLogHandler()
+        logger.addHandler(handler)
+        logger.level = Level.ALL
+
+        val display = CommandDisplay(logger)
+        display.displayAllCommands()
+
+        val messages = handler.messages
+
+        // Find the indices of category headers
+        val npcIndex = messages.indexOfFirst { it.contains("NPC COMMANDS") }
+        val infoIndex = messages.indexOfFirst { it.contains("INFO COMMANDS") }
+
+        assertTrue(npcIndex >= 0, "Should find NPC COMMANDS header")
+        assertTrue(infoIndex > npcIndex, "INFO COMMANDS should come after NPC COMMANDS")
+
+        // Verify NPC commands appear between NPC header and next category
+        val npcCommands = listOf("npcs", "togglenpcs", "setnpchealth", "setnpcdamage", "setnpccount", "setnpcattack")
+        npcCommands.forEach { cmdName ->
+            val cmdIndex = messages.indexOfFirst { it.contains("/arena $cmdName") }
+            assertTrue(
+                cmdIndex > npcIndex && cmdIndex < infoIndex,
+                "NPC command '/arena $cmdName' should appear in NPC COMMANDS section"
+            )
+        }
+    }
+
+    @Test
+    fun `displayAllCommands shows all categories in correct order`() {
+        val logger = Logger.getLogger("TestLogger12")
+        val handler = TestLogHandler()
+        logger.addHandler(handler)
+        logger.level = Level.ALL
+
+        val display = CommandDisplay(logger)
+        display.displayAllCommands()
+
+        val messages = handler.messages
+
+        // Get indices of all category headers
+        val indices = listOf(
+            "BUILD COMMANDS" to messages.indexOfFirst { it.contains("BUILD COMMANDS") },
+            "PLAYER COMMANDS" to messages.indexOfFirst { it.contains("PLAYER COMMANDS") },
+            "NPC COMMANDS" to messages.indexOfFirst { it.contains("NPC COMMANDS") },
+            "INFO COMMANDS" to messages.indexOfFirst { it.contains("INFO COMMANDS") },
+            "UTILITY COMMANDS" to messages.indexOfFirst { it.contains("UTILITY COMMANDS") }
+        )
+
+        // Verify all categories are found and in ascending order
+        indices.forEachIndexed { i, (name, index) ->
+            assertTrue(index >= 0, "Should find category '$name'")
+            if (i > 0) {
+                assertTrue(
+                    index > indices[i - 1].second,
+                    "Category '$name' should come after '${indices[i - 1].first}'"
+                )
+            }
+        }
+    }
 }
