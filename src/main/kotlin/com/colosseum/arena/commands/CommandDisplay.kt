@@ -10,6 +10,36 @@ class CommandDisplay(private val logger: Logger) {
     private val purple = "\u001B[95m" // Bright magenta/purple
     private val reset = "\u001B[0m"
     private val cmdPrefix = "$purple[ArenaPlugin] "
+    private val boxWidth = 58
+
+    /**
+     * Calculate visual width accounting for emojis (which are double-width)
+     * Handles variation selectors (U+FE0F) and emoji sequences properly
+     */
+    private fun String.visualWidth(): Int {
+        var width = 0
+        var i = 0
+        while (i < this.length) {
+            val codePoint = this.codePointAt(i)
+            when {
+                // Emojis and supplementary characters (double-width)
+                codePoint > 0xFFFF -> {
+                    width += 2
+                    i += Character.charCount(codePoint)
+                }
+                // Variation selectors (0xFE00-0xFE0F) - skip, they're part of emoji
+                codePoint in 0xFE00..0xFE0F -> {
+                    i += Character.charCount(codePoint)
+                }
+                // Regular characters (single-width)
+                else -> {
+                    width += 1
+                    i += Character.charCount(codePoint)
+                }
+            }
+        }
+        return width
+    }
 
     /**
      * Command categories for grouping display
@@ -19,7 +49,7 @@ class CommandDisplay(private val logger: Logger) {
         val commands: List<ArenaCommand>,
     ) {
         BUILD(
-            "🏗️  BUILD COMMANDS",
+            "🏗️ BUILD COMMANDS",
             listOf(
                 ArenaCommand.SIMPLE,
                 ArenaCommand.DETAILED,
@@ -43,7 +73,7 @@ class CommandDisplay(private val logger: Logger) {
             ),
         ),
         INFO(
-            "ℹ️  INFO COMMANDS",
+            "ℹ️ INFO COMMANDS",
             listOf(
                 ArenaCommand.SPAWNS,
                 ArenaCommand.VERSION,
@@ -51,7 +81,7 @@ class CommandDisplay(private val logger: Logger) {
             ),
         ),
         UTILITY(
-            "⚙️  UTILITY COMMANDS",
+            "⚙️ UTILITY COMMANDS",
             listOf(ArenaCommand.CANCEL),
         ),
     }
@@ -60,33 +90,32 @@ class CommandDisplay(private val logger: Logger) {
      * Log all available commands in a formatted purple box grouped by category
      */
     fun displayAllCommands() {
-        val line1 = "═".repeat(58)
-        val line2 = "─".repeat(58)
-        logger.info(
-            "$cmdPrefix╔$line1╗$reset",
-        )
+        val line = "═".repeat(boxWidth)
+        val dashLine = "─".repeat(boxWidth)
+        val emptyLine = " ".repeat(boxWidth)
+
+        logger.info("$cmdPrefix╔$line╗$reset")
+
         val header = "AVAILABLE ARENA COMMANDS"
-        val headerPadding = " ".repeat(58 - header.length)
-        logger.info(
-            "$cmdPrefix║$header$headerPadding║$reset",
-        )
-        logger.info(
-            "$cmdPrefix╠$line2╣$reset",
-        )
+        val headerPadding = " ".repeat(boxWidth - header.length - 1)
+        logger.info("$cmdPrefix║ $header$headerPadding║$reset")
+
+        logger.info("$cmdPrefix╠$dashLine╣$reset")
 
         Category.entries.forEach { category ->
             // Category header
-            val space58 = " ".repeat(58)
-            logger.info("$cmdPrefix║$space58║$reset")
-            logger.info(
-                "$cmdPrefix║  ${category.displayName}" +
-                    "║$reset",
+            logger.info("$cmdPrefix║$emptyLine║$reset")
+
+            val catPadding = " ".repeat(
+                boxWidth - 1 - category.displayName.visualWidth(),
             )
-            val separator = "═".repeat(category.displayName.length)
             logger.info(
-                "$cmdPrefix║  $separator" +
-                    "║$reset",
+                "$cmdPrefix║ ${category.displayName}$catPadding║$reset",
             )
+
+            val separator = "═".repeat(category.displayName.visualWidth())
+            val sepPadding = " ".repeat(boxWidth - 1 - separator.visualWidth())
+            logger.info("$cmdPrefix║ $separator$sepPadding║$reset")
 
             // Commands in this category
             category.commands.forEach { cmd ->
@@ -97,35 +126,34 @@ class CommandDisplay(private val logger: Logger) {
                     } else {
                         ""
                     }
-                val cmdStr = cmd.primaryName
-                logger.info(
-                    "$cmdPrefix║    /arena $cmdStr$usage" +
-                        "║$reset",
-                )
-                logger.info(
-                    "$cmdPrefix║       Aliases: $aliases" +
-                        "║$reset",
-                )
-                logger.info(
-                    "$cmdPrefix║       ${cmd.description}" +
-                        "║$reset",
-                )
-                logger.info("$cmdPrefix║$space58║$reset")
+
+                val cmdLine = "    /arena ${cmd.primaryName}$usage"
+                val cmdPadding = " ".repeat(boxWidth - cmdLine.length)
+                logger.info("$cmdPrefix║$cmdLine$cmdPadding║$reset")
+
+                val aliasLine = "       Aliases: $aliases"
+                val aliasPadding = " ".repeat(boxWidth - aliasLine.length)
+                logger.info("$cmdPrefix║$aliasLine$aliasPadding║$reset")
+
+                val descLine = "       ${cmd.description}"
+                val descPadding = " ".repeat(boxWidth - descLine.length)
+                logger.info("$cmdPrefix║$descLine$descPadding║$reset")
+
+                logger.info("$cmdPrefix║$emptyLine║$reset")
             }
 
             // Separator between categories
             if (category != Category.entries.last()) {
-                val dash58 = "─".repeat(58)
-                logger.info("$cmdPrefix╠$dash58╣$reset")
+                logger.info("$cmdPrefix╠$dashLine╣$reset")
             }
         }
 
-        val space58 = " ".repeat(58)
-        logger.info("$cmdPrefix║$space58║$reset")
-        val helpMsg = "Use /arena help for detailed usage information"
-        val padding = " ".repeat(58 - helpMsg.length)
-        logger.info("$cmdPrefix║  $helpMsg$padding║$reset")
-        val line58 = "═".repeat(58)
-        logger.info("$cmdPrefix╚$line58╝$reset")
+        logger.info("$cmdPrefix║$emptyLine║$reset")
+
+        val helpMsg = "Use /arena help for detailed usage information - phau"
+        val helpPadding = " ".repeat(boxWidth - 1 - helpMsg.length)
+        logger.info("$cmdPrefix║ $helpMsg$helpPadding║$reset")
+
+        logger.info("$cmdPrefix╚$line╝$reset")
     }
 }

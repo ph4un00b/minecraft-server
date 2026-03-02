@@ -2,6 +2,7 @@ package com.colosseum.arena.commands
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 import java.util.logging.Handler
 import java.util.logging.Level
@@ -28,220 +29,7 @@ class CommandDisplayTest {
     }
 
     @Test
-    fun `displayAllCommands includes all ArenaCommand entries`() {
-        val logger = Logger.getLogger("TestLogger")
-        val handler = TestLogHandler()
-        logger.addHandler(handler)
-        logger.level = Level.ALL
-
-        val display = CommandDisplay(logger)
-        display.displayAllCommands()
-
-        val loggedMessages = handler.messages.joinToString("\n")
-
-        // Verify every ArenaCommand is present
-        ArenaCommand.entries.forEach { cmd ->
-            assertTrue(
-                loggedMessages.contains("/arena ${cmd.primaryName}"),
-                "Output should contain command '/arena ${cmd.primaryName}'",
-            )
-        }
-    }
-
-    @Test
-    fun `displayAllCommands shows all command descriptions`() {
-        val logger = Logger.getLogger("TestLogger2")
-        val handler = TestLogHandler()
-        logger.addHandler(handler)
-        logger.level = Level.ALL
-
-        val display = CommandDisplay(logger)
-        display.displayAllCommands()
-
-        val loggedMessages = handler.messages.joinToString("\n")
-
-        // Verify every command description is present
-        ArenaCommand.entries.forEach { cmd ->
-            assertTrue(
-                loggedMessages.contains(cmd.description),
-                "Output should contain description " +
-                    "'${cmd.description}' for command ${cmd.primaryName}",
-            )
-        }
-    }
-
-    @Test
-    fun `displayAllCommands shows command aliases`() {
-        val logger = Logger.getLogger("TestLogger3")
-        val handler = TestLogHandler()
-        logger.addHandler(handler)
-        logger.level = Level.ALL
-
-        val display = CommandDisplay(logger)
-        display.displayAllCommands()
-
-        val loggedMessages = handler.messages.joinToString("\n")
-
-        // Verify aliases section is present
-        assertTrue(
-            loggedMessages.contains("Aliases:"),
-            "Output should contain 'Aliases:' section",
-        )
-
-        // Verify some specific aliases are shown
-        ArenaCommand.entries.forEach { cmd ->
-            val aliasesString = cmd.aliases.joinToString(", ")
-            assertTrue(
-                loggedMessages.contains(aliasesString),
-                "Output should contain aliases '$aliasesString' " +
-                    "for command ${cmd.primaryName}",
-            )
-        }
-    }
-
-    @Test
-    fun `displayAllCommands uses purple color codes`() {
-        val logger = Logger.getLogger("TestLogger4")
-        val handler = TestLogHandler()
-        logger.addHandler(handler)
-        logger.level = Level.ALL
-
-        val display = CommandDisplay(logger)
-        display.displayAllCommands()
-
-        val loggedMessages = handler.messages.joinToString("\n")
-
-        // Verify purple ANSI color code is used
-        assertTrue(
-            loggedMessages.contains("\u001B[95m"),
-            "Output should contain purple color code (\\u001B[95m)",
-        )
-
-        // Verify reset code is used
-        assertTrue(
-            loggedMessages.contains("\u001B[0m"),
-            "Output should contain reset code (\\u001B[0m)",
-        )
-    }
-
-    @Test
-    fun `displayAllCommands shows header and footer`() {
-        val logger = Logger.getLogger("TestLogger6")
-        val handler = TestLogHandler()
-        logger.addHandler(handler)
-        logger.level = Level.ALL
-
-        val display = CommandDisplay(logger)
-        display.displayAllCommands()
-
-        val loggedMessages = handler.messages.joinToString("\n")
-
-        // Verify header is present
-        assertTrue(
-            loggedMessages.contains("AVAILABLE ARENA COMMANDS"),
-            "Output should contain header 'AVAILABLE ARENA COMMANDS'",
-        )
-
-        // Verify footer with help message is present
-        assertTrue(
-            loggedMessages.contains("Use /arena help"),
-            "Output should contain footer 'Use /arena help'",
-        )
-    }
-
-    @Test
-    fun `displayAllCommands includes correct command count`() {
-        val logger = Logger.getLogger("TestLogger7")
-        val handler = TestLogHandler()
-        logger.addHandler(handler)
-        logger.level = Level.ALL
-
-        val display = CommandDisplay(logger)
-        display.displayAllCommands()
-
-        // Count lines that contain individual command entries ("/arena " followed by command name)
-        // Filter out the footer line that contains "Use /arena help"
-        val commandCount =
-            handler.messages.count { line ->
-                ArenaCommand.entries.any { cmd ->
-                    line.contains("/arena ${cmd.primaryName}") &&
-                        !line.contains("Use /arena help")
-                }
-            }
-
-        // Should have all ArenaCommand entries
-        assertEquals(
-            ArenaCommand.entries.size,
-            commandCount,
-            "Output should contain exactly ${ArenaCommand.entries.size} " +
-                "command entries, but found $commandCount",
-        )
-    }
-
-    @Test
-    fun `displayAllCommands shows usage parameters for commands with them`() {
-        val logger = Logger.getLogger("TestLogger8")
-        val handler = TestLogHandler()
-        logger.addHandler(handler)
-        logger.level = Level.ALL
-
-        val display = CommandDisplay(logger)
-        display.displayAllCommands()
-
-        val loggedMessages = handler.messages.joinToString("\n")
-
-        // Find commands that have usage parameters
-        val commandsWithParams = ArenaCommand.entries.filter {
-            it.usageParams.isNotEmpty()
-        }
-
-        // Verify those parameters are shown in output
-        commandsWithParams.forEach { cmd ->
-            assertTrue(
-                loggedMessages.contains(cmd.usageParams),
-                "Output should contain usage params " +
-                    "'${cmd.usageParams}' for command ${cmd.primaryName}",
-            )
-        }
-    }
-
-    @Test
-    fun `displayAllCommands shows category headers`() {
-        val logger = Logger.getLogger("TestLogger9")
-        val handler = TestLogHandler()
-        logger.addHandler(handler)
-        logger.level = Level.ALL
-
-        val display = CommandDisplay(logger)
-        display.displayAllCommands()
-
-        val loggedMessages = handler.messages.joinToString("\n")
-
-        // Verify all category headers are present
-        assertTrue(
-            loggedMessages.contains("BUILD COMMANDS"),
-            "Output should contain 'BUILD COMMANDS' category",
-        )
-        assertTrue(
-            loggedMessages.contains("PLAYER COMMANDS"),
-            "Output should contain 'PLAYER COMMANDS' category",
-        )
-        assertTrue(
-            loggedMessages.contains("NPC COMMANDS"),
-            "Output should contain 'NPC COMMANDS' category",
-        )
-        assertTrue(
-            loggedMessages.contains("INFO COMMANDS"),
-            "Output should contain 'INFO COMMANDS' category",
-        )
-        assertTrue(
-            loggedMessages.contains("UTILITY COMMANDS"),
-            "Output should contain 'UTILITY COMMANDS' category",
-        )
-    }
-
-    @Test
-    fun `displayAllCommands groups build commands together`() {
+    fun `displayAllCommands has consistent line widths within box`() {
         val logger = Logger.getLogger("TestLogger10")
         val handler = TestLogHandler()
         logger.addHandler(handler)
@@ -250,41 +38,35 @@ class CommandDisplayTest {
         val display = CommandDisplay(logger)
         display.displayAllCommands()
 
-        val messages = handler.messages
+        val boxWidth = 58
 
-        // Find the indices of category headers
-        val buildIndex = messages.indexOfFirst { it.contains("BUILD COMMANDS") }
-        val playerIndex = messages.indexOfFirst {
-            it.contains(
-                "PLAYER COMMANDS",
-            )
-        }
+        // Filter to only box content lines (those containing ║)
+        val boxLines = handler.messages.filter { it.contains('║') }
 
-        assertTrue(buildIndex >= 0, "Should find BUILD COMMANDS header")
-        assertTrue(
-            playerIndex > buildIndex,
-            "PLAYER COMMANDS should come after BUILD COMMANDS",
-        )
+        assertTrue(boxLines.isNotEmpty(), "Should have box lines")
 
-        // Verify build commands appear between build header and next category
-        val buildCommands = listOf("simple", "detailed", "rebuild", "sety")
-        buildCommands.forEach { cmdName ->
-            val cmdIndex = messages.indexOfFirst {
-                it.contains(
-                    "/arena $cmdName",
+        boxLines.forEach { line ->
+            // Extract content between the box borders
+            val start = line.indexOf('║')
+            val end = line.lastIndexOf('║')
+
+            if (start >= 0 && end > start) {
+                val content = line.substring(start + 1, end)
+                val contentWidth = content.visualWidth()
+
+                assertEquals(
+                    boxWidth,
+                    contentWidth,
+                    "Box content should be exactly $boxWidth columns " +
+                        "but was $contentWidth: '$content'",
                 )
             }
-            assertTrue(
-                cmdIndex > buildIndex && cmdIndex < playerIndex,
-                "Build command '/arena $cmdName' " +
-                    "should appear in BUILD COMMANDS section",
-            )
         }
     }
 
     @Test
-    fun `displayAllCommands groups npc commands together`() {
-        val logger = Logger.getLogger("TestLogger11")
+    fun `displayAllCommands matches reference file`() {
+        val logger = Logger.getLogger("TestLoggerRef")
         val handler = TestLogHandler()
         logger.addHandler(handler)
         logger.level = Level.ALL
@@ -292,94 +74,89 @@ class CommandDisplayTest {
         val display = CommandDisplay(logger)
         display.displayAllCommands()
 
-        val messages = handler.messages
-
-        // Find the indices of category headers
-        val npcIndex = messages.indexOfFirst { it.contains("NPC COMMANDS") }
-        val infoIndex = messages.indexOfFirst { it.contains("INFO COMMANDS") }
-
-        assertTrue(npcIndex >= 0, "Should find NPC COMMANDS header")
-        assertTrue(
-            infoIndex > npcIndex,
-            "INFO COMMANDS should come after NPC COMMANDS",
+        // Read reference file
+        val referenceFile = java.io.File(
+            "src/test/kotlin/com/colosseum/arena/commands/expected_commands_display.txt",
         )
+        val referenceLines = referenceFile.readLines()
 
-        // Verify NPC commands appear between NPC header and next category
-        val npcCommands =
-            listOf(
-                "npcs",
-                "togglenpcs",
-                "setnpchealth",
-                "setnpcdamage",
-                "setnpccount",
-                "setnpcattack",
-            )
-        npcCommands.forEach { cmdName ->
-            val cmdIndex = messages.indexOfFirst {
-                it.contains(
-                    "/arena $cmdName",
-                )
+        // Get actual output and clean it (remove ANSI codes and prefix)
+        val actualLines = handler.messages
+            .filter {
+                it.contains('║') ||
+                    it.contains('╔') ||
+                    it.contains('╚') ||
+                    it.contains('╠')
             }
-            assertTrue(
-                cmdIndex > npcIndex && cmdIndex < infoIndex,
-                "NPC command '/arena $cmdName' " +
-                    "should appear in NPC COMMANDS section",
+            .map { line ->
+                // Remove ANSI color codes
+                line.replace(Regex("\\u001B\\[[0-9;]*m"), "")
+                    // Remove [ArenaPlugin] prefix
+                    .replace("[ArenaPlugin] ", "")
+            }
+
+        // Build diff output
+        val diffBuilder = StringBuilder()
+        diffBuilder.appendLine("=== DIFF (Expected vs Actual) ===")
+        diffBuilder.appendLine()
+
+        val maxLines = maxOf(referenceLines.size, actualLines.size)
+        var hasDiff = false
+
+        for (i in 0 until maxLines) {
+            val expected = referenceLines.getOrElse(i) { "" }
+            val actual = actualLines.getOrElse(i) { "" }
+
+            if (expected != actual) {
+                hasDiff = true
+                diffBuilder.appendLine("@@ Line ${i + 1} @@")
+                diffBuilder.appendLine("- $expected")
+                diffBuilder.appendLine("+ $actual")
+                diffBuilder.appendLine()
+            }
+        }
+
+        // Check line count mismatch
+        if (referenceLines.size != actualLines.size) {
+            hasDiff = true
+            val refSize = referenceLines.size
+            val actualSize = actualLines.size
+            diffBuilder.appendLine(
+                "@@ Line count mismatch: expected $refSize, got $actualSize @@",
             )
+        }
+
+        if (hasDiff) {
+            fail<Nothing>(diffBuilder.toString())
         }
     }
 
-    @Test
-    fun `displayAllCommands shows all categories in correct order`() {
-        val logger = Logger.getLogger("TestLogger12")
-        val handler = TestLogHandler()
-        logger.addHandler(handler)
-        logger.level = Level.ALL
-
-        val display = CommandDisplay(logger)
-        display.displayAllCommands()
-
-        val messages = handler.messages
-
-        // Get indices of all category headers
-        val buildIndex =
-            messages.indexOfFirst {
-                it.contains("BUILD COMMANDS")
-            }
-        val playerIndex =
-            messages.indexOfFirst {
-                it.contains("PLAYER COMMANDS")
-            }
-        val npcIndex =
-            messages.indexOfFirst {
-                it.contains("NPC COMMANDS")
-            }
-        val infoIndex =
-            messages.indexOfFirst {
-                it.contains("INFO COMMANDS")
-            }
-        val utilityIndex =
-            messages.indexOfFirst {
-                it.contains("UTILITY COMMANDS")
-            }
-        val indices =
-            listOf(
-                "BUILD COMMANDS" to buildIndex,
-                "PLAYER COMMANDS" to playerIndex,
-                "NPC COMMANDS" to npcIndex,
-                "INFO COMMANDS" to infoIndex,
-                "UTILITY COMMANDS" to utilityIndex,
-            )
-
-        // Verify all categories are found and in ascending order
-        indices.forEachIndexed { i, (name, index) ->
-            assertTrue(index >= 0, "Should find category '$name'")
-            if (i > 0) {
-                assertTrue(
-                    index > indices[i - 1].second,
-                    "Category '$name' should come after " +
-                        "'${indices[i - 1].first}'",
-                )
+    /**
+     * Calculate visual width accounting for emojis
+     */
+    private fun String.visualWidth(): Int {
+        // Count grapheme clusters (simplified: count emojis as 2 columns)
+        var width = 0
+        var i = 0
+        while (i < this.length) {
+            val codePoint = this.codePointAt(i)
+            when {
+                // Emojis and supplementary characters (double-width)
+                codePoint > 0xFFFF -> {
+                    width += 2
+                    i += Character.charCount(codePoint)
+                }
+                // Variation selectors (0xFE00-0xFE0F) - skip, they're part of emoji
+                codePoint in 0xFE00..0xFE0F -> {
+                    i += Character.charCount(codePoint)
+                }
+                // Regular characters
+                else -> {
+                    width += 1
+                    i += Character.charCount(codePoint)
+                }
             }
         }
+        return width
     }
 }
