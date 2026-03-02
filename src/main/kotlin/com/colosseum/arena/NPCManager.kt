@@ -1,6 +1,7 @@
 package com.colosseum.arena
 
 import com.colosseum.arena.domain.NPCAttackType
+import com.colosseum.arena.domain.NPCDecisions
 import com.colosseum.arena.domain.SpawnPosition
 import com.colosseum.arena.operations.PlayerSpawner
 import net.citizensnpcs.api.CitizensAPI
@@ -42,6 +43,9 @@ class NPCManager(
     private var npcCount = 1
     private var npcEnabled = true
     private var npcAttackType = NPCAttackType.FIREBALL
+    private var currentBatchSize = 1
+    private var lastSpawnWorld: World? = null
+    private var lastSpawnBaseY: Int = 0
 
     init {
         Bukkit.getPluginManager().registerEvents(this, plugin)
@@ -83,6 +87,10 @@ class NPCManager(
             "$YELLOW[ArenaPlugin] Spawning $npcCount Sentinel NPCs " +
                 "at baseY=$baseY$RESET",
         )
+
+        lastSpawnWorld = world
+        lastSpawnBaseY = baseY
+        currentBatchSize = npcCount
 
         clearAllNPCs()
 
@@ -251,10 +259,21 @@ class NPCManager(
 
         if (trackedNPCs.containsKey(npc.id)) {
             plugin.logger.info(
-                "$YELLOW[ArenaPlugin] NPC ${npc.id} died, " +
-                    "will stay dead until rebuild$RESET",
+                "$YELLOW[ArenaPlugin] NPC ${npc.id} died$RESET",
             )
             trackedNPCs.remove(npc.id)
+
+            if (trackedNPCs.isEmpty()) {
+                val nextBatchSize = NPCDecisions.nextBatchSize(currentBatchSize)
+                currentBatchSize = nextBatchSize
+                npcCount = currentBatchSize
+                plugin.logger.info(
+                    "$YELLOW[ArenaPlugin] All NPCs dead. " +
+                        "Spawning next batch: $currentBatchSize NPCs$RESET",
+                )
+                val world = entity.world
+                spawnArenaNPCs(world, lastSpawnBaseY)
+            }
         }
     }
 
