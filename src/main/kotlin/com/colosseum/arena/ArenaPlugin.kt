@@ -1,8 +1,13 @@
 package com.colosseum.arena
 
-import com.colosseum.arena.domain.ArenaType
-import com.colosseum.arena.domain.NPCAttackType
-import com.colosseum.arena.domain.SpawnPosition
+import com.colosseum.arena.commands.ArenaCommand
+import com.colosseum.arena.commands.BuildCommands
+import com.colosseum.arena.commands.CommandDisplay
+import com.colosseum.arena.commands.CommandLogger
+import com.colosseum.arena.commands.CommandSuggestion
+import com.colosseum.arena.commands.InfoCommands
+import com.colosseum.arena.commands.NPCCommands
+import com.colosseum.arena.commands.PlayerCommands
 import com.colosseum.arena.manager.ArenaManager
 import org.bukkit.Bukkit
 import org.bukkit.Location
@@ -49,13 +54,16 @@ data class VersionInfo(
 
 class ArenaPlugin : JavaPlugin(), Listener {
 
-    private val prefix = "\u001B[32m[ArenaPlugin]\u001B[0m "
-    
     // Arena manager - the facade (initialized in onEnable)
     private var manager: ArenaManager? = null
-    
+
     // Version info loaded from version.properties
     private val versionInfo by lazy { VersionInfo.load(this) }
+
+    private val prefix = ArenaCommand.PREFIX
+
+    // Command logger for audit trail
+    private lateinit var commandLogger: CommandLogger
 
     override fun onEnable() {
         logger.info("${prefix}Enabling Colosseum Arena Plugin...")
@@ -109,6 +117,10 @@ class ArenaPlugin : JavaPlugin(), Listener {
         manager?.let {
             logger.info("${prefix}Arrow system: Max ${it.arrowTracker.getMaxAllowed()} arrows (${it.arrowTracker.getArrowCount()} per player)")
         }
+        
+        // Display all available commands in brilliant purple
+        val commandDisplay = CommandDisplay(logger)
+        commandDisplay.displayAllCommands()
     }
     
     /**
@@ -199,7 +211,9 @@ class ArenaPlugin : JavaPlugin(), Listener {
     private fun initializeComponents() {
         try {
             manager = ArenaManager(this)
+            commandLogger = CommandLogger(dataFolder)
             logger.info("${prefix}Components initialized successfully")
+            logger.info("${prefix}Command logging enabled: ${commandLogger.getLogFile().absolutePath}")
         } catch (e: Exception) {
             logger.severe("${prefix}Failed to initialize: ${e.message}")
             throw e
@@ -270,22 +284,7 @@ override fun onCommand(
             if (args.isEmpty()) {
                 val currentMgr = manager
                 val currentTracker = manager?.arrowTracker
-                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version | npcs | toggleNPCs | setNPCHealth <health> | setNPCDamage <damage> | setNPCCount <count> | setNPCAttack <arrow|fireball> ]")
-                sender.sendMessage("${prefix}Version: ${versionInfo.version}")
-                if (currentMgr != null) {
-                    sender.sendMessage("${prefix}Current: base-y=${currentMgr.getCurrentBaseY()}, type=${currentMgr.getCurrentType().name.lowercase()}")
-                }
-                if (currentTracker != null) {
-                    sender.sendMessage("${prefix}Arrows: ${currentTracker.getArrowCount()}/${currentTracker.getMaxAllowed()} (5 per player)")
-                }
-                sender.sendMessage("${prefix}Spawn rotation: East → South → West → North (clockwise)")
-                return true
-            }
-
-            if (args.isEmpty()) {
-                val currentMgr = manager
-                val currentTracker = manager?.arrowTracker
-                sender.sendMessage("${prefix}Usage: /arena [ simple | detailed | rebuild | sety <y-level> | restock <player> | arrows | spawns | version ]")
+                sender.sendMessage("${prefix}Usage: /arena [ ${ArenaCommand.generateUsageString()} ]")
                 sender.sendMessage("${prefix}Version: ${versionInfo.version}")
                 if (currentMgr != null) {
                     sender.sendMessage("${prefix}Current: base-y=${currentMgr.getCurrentBaseY()}, type=${currentMgr.getCurrentType().name.lowercase()}")
@@ -308,165 +307,108 @@ override fun onCommand(
                 return true
             }
 
-            when (args[0].lowercase()) {
-                "simple" -> {
-                    sender.sendMessage("${prefix}Building simple arena with spawn markers...")
-                    currentMgr.rebuild(world, ArenaType.SIMPLE)
-                    sender.sendMessage("${prefix}Simple arena built! Spawns at E/S/W/N inner edge")
+            val cmd = ArenaCommand.fromString(args[0])
+            if (cmd == null) {
+                val suggestion = CommandSuggestion.suggestSimilar(args[0])
+                if (suggestion != null) {
+                    sender.sendMessage("${prefix}Unknown command '${args[0]}'. Did you mean '${suggestion}'?")
+                } else {
+                    sender.sendMessage("${prefix}${ArenaCommand.generateUnknownOptionMessage()}")
                 }
-                "detailed" -> {
-                    sender.sendMessage("${prefix}Building detailed gothic arena with spawn markers...")
-                    currentMgr.rebuild(world, ArenaType.DETAILED)
-                    sender.sendMessage("${prefix}Detailed arena built! Spawns at E/S/W/N inner edge")
+                return true
+            }
+
+            // Check if a build is in progress for build commands
+            val isBuildCommand = cmd in listOf(ArenaCommand.SIMPLE, ArenaCommand.DETAILED, ArenaCommand.REBUILD)
+            
+            // Initialize command category handlers with dependency injection
+            val buildCommands = BuildCommands(currentMgr, world, commandLogger, this)
+            val playerCommands = PlayerCommands(currentMgr, commandLogger)
+            val npcCommands = NPCCommands(currentMgr.npcManager, commandLogger)
+            val infoCommands = InfoCommands(versionInfo, currentMgr, commandLogger)
+
+            // Handle cancel command first
+            if (cmd == ArenaCommand.CANCEL) {
+                if (buildCommands.isBuilding()) {
+                    sender.sendMessage("${prefix}Cannot cancel - build is already in progress and cannot be interrupted")
+                    commandLogger.logCommand(sender, cmd, args, false, mapOf("reason" to "build_in_progress_no_cancel"))
+                } else {
+                    sender.sendMessage("${prefix}No operation to cancel")
+                    commandLogger.logCommand(sender, cmd, args, false, mapOf("reason" to "no_operation"))
                 }
-                "rebuild" -> {
-                    val currentType = currentMgr.getCurrentType()
-                    sender.sendMessage("${prefix}Rebuilding arena (type: ${currentType.name.lowercase()})...")
-                    currentMgr.rebuild(world, currentType)
-                    sender.sendMessage("${prefix}Arena rebuilt! Spawn markers restored.")
+                return true
+            }
+
+            // Check if this is a destructive command
+            val isDestructive = cmd in listOf(ArenaCommand.SIMPLE, ArenaCommand.DETAILED, ArenaCommand.REBUILD, ArenaCommand.SET_Y)
+
+            if (isDestructive) {
+                // Check for force flag
+                val hasForceFlag = args.size > 1 && args[1].equals("f", ignoreCase = true)
+
+                // Execute with appropriate mode (sync with 'f' flag, async by default)
+                val newArgs = if (hasForceFlag) {
+                    args.filterIndexed { index, _ -> index != 1 }.toTypedArray()
+                } else {
+                    args
                 }
-                "sety" -> {
-                    if (args.size < 2) {
-                        sender.sendMessage("${prefix}Usage: /arena sety <y-level>")
-                        sender.sendMessage("${prefix}Current Y level: ${currentMgr.getCurrentBaseY()}")
-                        return true
-                    }
-                    val newY = args[1].toIntOrNull()
-                    if (newY == null || newY < 0 || newY > 255) {
-                        sender.sendMessage("${prefix}Error: Y level must be between 0 and 255")
-                        return true
-                    }
-                    val oldY = currentMgr.getCurrentBaseY()
-                    sender.sendMessage("${prefix}Changing arena base Y from $oldY to $newY...")
-                    currentMgr.changeYLevel(world, newY, currentMgr.getCurrentType())
-                    sender.sendMessage("${prefix}Arena rebuilt at Y=$newY! Spawn markers updated.")
-                }
-                "restock" -> {
-                    // Get target player
-                    val targetPlayer: Player = if (args.size >= 2) {
-                        // Get player by name
-                        server.getPlayer(args[1]) ?: run {
-                            sender.sendMessage("${prefix}Error: Player '${args[1]}' not found or not online")
-                            return true
-                        }
-                    } else {
-                        // Use sender if they're a player
-                        if (sender is Player) {
-                            sender
-                        } else {
-                            sender.sendMessage("${prefix}Usage: /arena restock <player>")
-                            return true
-                        }
-                    }
-                    
-                    // Restock the player
-                    val success = currentMgr.restockPlayer(targetPlayer)
-                    if (success) {
-                        sender.sendMessage("${prefix}Restocked ${targetPlayer.name} with 5 arrows and repaired bow")
-                        targetPlayer.sendMessage("${prefix}You have been restocked! Bow repaired, +5 arrows (max 10)")
-                    } else {
-                        sender.sendMessage("${prefix}Error: ${targetPlayer.name} does not have a bow")
-                    }
-                }
-                "arrows" -> {
-                    // Show arrow status
-                    val currentTracker = manager?.arrowTracker
-                    if (currentTracker != null) {
-                        sender.sendMessage("${prefix}Arrow Status:")
-                        sender.sendMessage("  Tracked arrows: ${currentTracker.getArrowCount()}")
-                        sender.sendMessage("  Max allowed: ${currentTracker.getMaxAllowed()} (5 per player)")
-                        sender.sendMessage("  Online players: ${Bukkit.getOnlinePlayers().size}")
-                        sender.sendMessage("  Arrows persist until picked up")
-                    } else {
-                        sender.sendMessage("${prefix}Arrow tracker not initialized")
-                    }
-                }
-                "spawns" -> {
-                    // Show spawn info
-                    sender.sendMessage("${prefix}Spawn System:")
-                    sender.sendMessage("  4 fixed positions at inner edge (radius 12)")
-                    sender.sendMessage("  East: Gold block marker")
-                    sender.sendMessage("  South: Diamond block marker")
-                    sender.sendMessage("  West: Emerald block marker")
-                    sender.sendMessage("  North: Lapis block marker")
-                    sender.sendMessage("  Rotation: Clockwise (E → S → W → N)")
-                }
-                "npcs" -> {
-                    sender.sendMessage("${prefix}NPC System:")
-                    sender.sendMessage("  ${manager?.npcManager?.getNPCStatus()}")
-                    sender.sendMessage("  Use: /arena toggleNPCs, /arena setNPCHealth <health>, /arena setNPCDamage <damage>, /arena setNPCCount <count>, /arena setNPCAttack <arrow|fireball>")
-                }
-                "toggleNPCs" -> {
-                    manager?.npcManager?.toggleNPCs()
-                    sender.sendMessage("${prefix}NPCs ${if (manager?.npcManager?.isNPCEnabled() == true) "enabled" else "disabled"}")
-                }
-                "setNPCHealth" -> {
-                    if (args.size < 2) {
-                        sender.sendMessage("${prefix}Usage: /arena setNPCHealth <health>")
-                        sender.sendMessage("${prefix}Current NPC health: ${manager?.npcManager?.getNPCHealth()}")
-                        return true
-                    }
-                    val newHealth = args[1].toDoubleOrNull()
-                    if (newHealth == null || newHealth <= 0) {
-                        sender.sendMessage("${prefix}Error: Health must be a positive number")
-                        return true
-                    }
-                    manager?.npcManager?.setNPCHealth(newHealth)
-                    sender.sendMessage("${prefix}NPC health set to $newHealth")
-                }
-                "setNPCDamage" -> {
-                    if (args.size < 2) {
-                        sender.sendMessage("${prefix}Usage: /arena setNPCDamage <damage>")
-                        sender.sendMessage("${prefix}Current NPC damage: ${manager?.npcManager?.getNPCDamage()}")
-                        return true
-                    }
-                    val newDamage = args[1].toDoubleOrNull()
-                    if (newDamage == null || newDamage <= 0) {
-                        sender.sendMessage("${prefix}Error: Damage must be a positive number")
-                        return true
-                    }
-                    manager?.npcManager?.setNPCDamage(newDamage)
-                    sender.sendMessage("${prefix}NPC damage set to $newDamage")
-                }
-                "setNPCCount" -> {
-                    if (args.size < 2) {
-                        sender.sendMessage("${prefix}Usage: /arena setNPCCount <count>")
-                        sender.sendMessage("${prefix}Current NPC count: ${manager?.npcManager?.getNPCCount()}")
-                        return true
-                    }
-                    val newCount = args[1].toIntOrNull()
-                    if (newCount == null || newCount < 0 || newCount > 4) {
-                        sender.sendMessage("${prefix}Error: Count must be between 0 and 4")
-                        return true
-                    }
-                    manager?.npcManager?.setNPCCount(newCount)
-                    sender.sendMessage("${prefix}NPC count set to $newCount")
-                }
-                "setnpcattack" -> {
-                    if (args.size < 2) {
-                        sender.sendMessage("${prefix}Usage: /arena setNPCAttack <arrow|fireball>")
-                        sender.sendMessage("${prefix}Current NPC attack type: ${manager?.npcManager?.getNPCAttackType()}")
-                        return true
-                    }
-                    logger.info("${prefix}Command setNPCAttack received with arg: ${args[1]}")
-                    val attackType = when (args[1].lowercase()) {
-                        "arrow" -> NPCAttackType.SPECTRAL_ARROW
-                        "fireball" -> NPCAttackType.FIREBALL
-                        else -> {
-                            sender.sendMessage("${prefix}Error: Attack type must be 'arrow' or 'fireball'")
-                            return true
-                        }
-                    }
-                    logger.info("${prefix}Parsed attack type: $attackType, calling setNPCAttackType...")
-                    manager?.npcManager?.setNPCAttackType(attackType)
-                    sender.sendMessage("${prefix}NPC attack type set to $attackType (rebuild arena to apply)")
-                }
+                
+                buildCommands.execute(cmd, newArgs, sender, hasForceFlag)
+                return true
+            }
+
+            // Direct dispatch to appropriate category handler
+            when (cmd) {
+                ArenaCommand.RESTOCK,
+                ArenaCommand.ARROWS -> playerCommands.execute(cmd, args, sender)
+
+                ArenaCommand.NPCS,
+                ArenaCommand.TOGGLE_NPCS,
+                ArenaCommand.SET_NPC_HEALTH,
+                ArenaCommand.SET_NPC_DAMAGE,
+                ArenaCommand.SET_NPC_COUNT,
+                ArenaCommand.SET_NPC_ATTACK -> npcCommands.execute(cmd, args, sender)
+
+                ArenaCommand.SPAWNS,
+                ArenaCommand.VERSION,
+                ArenaCommand.HELP -> infoCommands.execute(cmd, args, sender)
+
                 else -> {
-                    sender.sendMessage("${prefix}Unknown option. Use: simple, detailed, rebuild, sety, restock, arrows, spawns, version, npcs, toggleNPCs, setNPCHealth, setNPCDamage, setNPCCount, or setNPCAttack")
+                    sender.sendMessage("${prefix}Unknown command")
+                    commandLogger.logCommand(sender, cmd, args, false, mapOf("reason" to "unknown_command"))
                 }
             }
             return true
         }
         return false
+    }
+
+    override fun onTabComplete(
+        sender: CommandSender,
+        command: Command,
+        alias: String,
+        args: Array<String>
+    ): List<String>? {
+        if (command.name != "arena") return null
+
+        return when (args.size) {
+            1 -> ArenaCommand.entries
+                .map { it.primaryName }
+                .filter { it.startsWith(args[0].lowercase()) }
+            2 -> when (ArenaCommand.fromString(args[0])) {
+                ArenaCommand.RESTOCK -> server.onlinePlayers
+                    .map { it.name }
+                    .filter { it.startsWith(args[1], ignoreCase = true) }
+                ArenaCommand.SET_NPC_ATTACK -> listOf("arrow", "fireball")
+                    .filter { it.startsWith(args[1].lowercase()) }
+                ArenaCommand.SET_NPC_COUNT -> listOf("0", "1", "2", "3", "4")
+                    .filter { it.startsWith(args[1]) }
+                ArenaCommand.SET_Y -> listOf(manager?.getCurrentBaseY()?.toString() ?: "64")
+                ArenaCommand.SIMPLE, ArenaCommand.DETAILED, ArenaCommand.REBUILD -> listOf("f")
+                    .filter { it.startsWith(args[1].lowercase()) }
+                else -> emptyList()
+            }
+            else -> emptyList()
+        }
     }
 }

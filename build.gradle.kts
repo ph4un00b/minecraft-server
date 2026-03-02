@@ -21,6 +21,10 @@ dependencies {
     compileOnly("net.citizensnpcs:citizens-main:2.0.37-SNAPSHOT")
     compileOnly("org.mcmonkey:sentinel:2.9.3-SNAPSHOT")
     implementation(kotlin("stdlib"))
+
+    // Testing
+    testImplementation(kotlin("test"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
 }
 
 kotlin {
@@ -38,6 +42,14 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
         allWarningsAsErrors.set(true)
+    }
+}
+
+// Configure tests to use JUnit Platform
+tasks.test {
+    useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
     }
 }
 

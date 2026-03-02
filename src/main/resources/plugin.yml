@@ -10,7 +10,12 @@ load: POSTWORLD
 commands:
   arena:
     description: Arena management and combat commands
-    usage: /<command> [simple|detailed|rebuild|sety <level>|restock <player>|version|arrows]
+    usage: |
+      /<command> <subcommand> [args]
+      Build: simple | detailed | rebuild | sety <level>
+      Player: restock [player] | arrows
+      NPC: npcs | togglenpcs | setnpchealth <health> | setnpcdamage <damage> | setnpccount <0-4> | setnpcattack <arrow|fireball>
+      Info: spawns | version | help
     permission: colosseum.arena.admin
     permission-message: You do not have permission to use this command.
 
