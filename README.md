@@ -9,12 +9,24 @@ A self-contained, offline-mode PaperMC 1.21.4 Minecraft server with a Kotlin-bas
 - **Deterministic Build**: Same arena every time, builds once only
 - **Cross-Platform**: Linux, macOS, and Windows support
 - **Clean Architecture**: Server files isolated in `server/` folder
+- **NPC Combat System**: Configurable Sentinel NPCs for arena battles
+- **Combat Kit**: Auto-equip players with enchanted bow and arrows
+- **Arrow Tracking**: Persistent arrows with 5 per player limit
+- **Async Building**: Lag-free arena rebuilding with progress tracking
+- **Command Logging**: Full audit trail of admin commands
+- **Spawn Rotation**: Players spawn at E/S/W/N positions cyclically
 
 ## Prerequisites
 
 - **Java 21** (JDK required)
 - **Gradle** (if wrapper files not committed)
 - **Network** (only for initial PaperMC download)
+
+### Required Plugins
+
+This plugin requires these external plugins:
+- **Citizens** (NPC framework) - Download from https://wiki.citizensnpcs.co/Versions
+- **Sentinel** (NPC combat) - Download from https://wiki.citizensnpcs.co/Sentinel
 
 ### Java Version Check
 
@@ -104,6 +116,7 @@ mcserver backup     # Backup world data
 root/
 ├── .gitignore
 ├── README.md
+├── DEPLOY.md                   # Ubuntu deployment guide
 ├── build.gradle.kts            # Main build configuration
 ├── settings.gradle.kts         # Project settings
 ├── gradlew / gradlew.bat       # Gradle wrapper (in root)
@@ -111,23 +124,68 @@ root/
 │   ├── setup.sh / setup.bat    # Setup scripts
 │   ├── run.sh / run.bat        # Server run scripts (Gradle)
 │   ├── start-server.sh / .bat  # Server run scripts (direct Java)
-│   └── fix-locks.sh            # Fix server lock issues
+│   ├── fix-locks.sh            # Fix server lock issues
+│   └── update-changelog.sh     # Update changelog
 ├── tasks/                      # Gradle task definitions
 ├── templates/                  # Configuration templates
 │   ├── phau.properties.defaults # Arena config template
 │   └── server.properties.defaults # Server config template
 ├── server/                     # Server files (generated, gitignored)
 │   ├── world/                  # World data
-│   ├── plugins/                # Plugin JAR
+│   ├── plugins/                # Plugin JAR + dependencies
 │   ├── phau.properties         # Arena config (from template)
 │   ├── server.properties       # Server config (from template)
 │   └── paper-1.21.4.jar        # Paper server
-├── external/                   # Downloaded Paper JAR
-├── plugins/                    # Compiled plugin
+├── external/                   # Downloaded Paper JAR + plugins
+├── plugins/                    # Compiled plugin JAR
 └── src/                        # Source code
-    └── main/kotlin/com/colosseum/
-        ├── arena/ArenaPlugin.kt          # Main plugin
-        └── core/storage/PropertiesStorage.kt  # Config storage
+    ├── main/kotlin/com/colosseum/
+    │   ├── arena/
+    │   │   ├── ArenaPlugin.kt          # Main plugin class
+    │   │   ├── NPCManager.kt           # NPC management
+    │   │   ├── NPCConfig.kt            # NPC configuration
+    │   │   ├── NPCEvents.kt            # NPC event handlers
+    │   │   ├── builders/               # Arena builders
+    │   │   │   ├── ArenaBuilder.kt
+    │   │   │   ├── SimpleArena.kt
+    │   │   │   ├── DetailedArena.kt
+    │   │   │   ├── BlockPlacer.kt
+    │   │   │   └── QueuedBlockPlacer.kt
+    │   │   ├── commands/               # All commands
+    │   │   │   ├── ArenaCommand.kt     # Command enum
+    │   │   │   ├── BuildCommands.kt
+    │   │   │   ├── PlayerCommands.kt
+    │   │   │   ├── NPCCommands.kt
+    │   │   │   ├── InfoCommands.kt
+    │   │   │   ├── CommandLogger.kt
+    │   │   │   ├── CommandDisplay.kt
+    │   │   │   └── CommandSuggestion.kt
+    │   │   ├── combat/                 # Combat system
+    │   │   │   ├── CombatKit.kt
+    │   │   │   ├── KitConfig.kt
+    │   │   │   └── ArrowTracker.kt
+    │   │   ├── domain/                 # Domain models
+    │   │   │   ├── ArenaConfig.kt
+    │   │   │   ├── ArenaType.kt
+    │   │   │   ├── NPCAttackType.kt
+    │   │   │   ├── SpawnPoint.kt
+    │   │   │   └── SpawnPosition.kt
+    │   │   ├── manager/                # Arena manager (facade)
+    │   │   │   └── ArenaManager.kt
+    │   │   └── operations/             # Operations
+    │   │       ├── ArenaClearer.kt
+    │   │       ├── PlayerSpawner.kt
+    │   │       └── YLevelChanger.kt
+    │   └── core/storage/
+    │       └── PropertiesStorage.kt    # Config storage
+    ├── main/resources/
+    │   ├── plugin.yml                  # Plugin configuration
+    │   └── version.properties          # Build version info
+    └── test/kotlin/                    # Unit tests
+        └── com/colosseum/arena/commands/
+            ├── CommandDisplayTest.kt
+            ├── CommandSuggestionTest.kt
+            └── CommandCategoriesTest.kt
 ```
 
 ## Gradle Tasks
@@ -138,6 +196,9 @@ root/
 
 # Download PaperMC server
 ./gradlew downloadPaper
+
+# Download required plugins (Citizens, Sentinel)
+./gradlew downloadPlugins
 
 # Build plugin only
 ./gradlew jar
@@ -150,6 +211,18 @@ root/
 
 # Validate Java version
 ./gradlew checkJava
+
+# Check code style
+./gradlew ktlintCheck
+
+# Auto-format code
+./gradlew ktlintFormat
+
+# Run tests
+./gradlew test
+
+# Full check (tests + lint)
+./gradlew check
 ```
 
 ## First Run Expectations
@@ -157,6 +230,7 @@ root/
 1. **Setup Phase** (~1-2 minutes):
    - Java validation
    - PaperMC download (requires network)
+   - Citizens & Sentinel plugin download
    - Plugin compilation
    - Server initialization
    - EULA auto-acceptance
@@ -164,11 +238,76 @@ root/
 2. **First Server Start** (~10-30 seconds):
    - World generation
    - Arena construction (logged in console)
-   - Spawn point set to (0, 65, 0)
+   - NPC spawning
+   - Spawn point markers placed
 
 3. **Subsequent Starts** (~5 seconds):
    - Arena detected, skipping build
    - Fast world load
+
+## Commands
+
+All commands require OP permission (`colosseum.arena.admin`).
+
+### Build Commands
+```
+/arena simple [f]          - Build simple arena (add 'f' for sync/forced)
+/arena detailed [f]        - Build detailed arena (add 'f' for sync/forced)
+/arena rebuild [f]         - Rebuild current arena (add 'f' for sync/forced)
+/arena sety <level>        - Change arena Y level (requires rebuild)
+/arena cancel              - Cancel pending operation
+```
+
+### Player Commands
+```
+/arena restock [player]    - Restock arrows and repair bow
+/arena arrows              - Show arrow tracking status
+```
+
+### NPC Commands
+```
+/arena npcs                - Show NPC status
+/arena togglenpcs          - Toggle NPCs on/off
+/arena setnpccount <0-4>   - Set number of NPCs (max 4)
+/arena setnpchealth <hp>   - Set NPC health
+/arena setnpcdamage <dmg>  - Set NPC damage
+/arena setnpcattack <type> - Set attack type: arrow|fireball
+```
+
+### Info Commands
+```
+/arena spawns              - Show spawn rotation info
+/arena version             - Show plugin version
+/arena help                - Show command help
+```
+
+### Tab Completion
+All commands support tab completion for subcommands and arguments.
+
+## Configuration
+
+### Arena Config (`server/phau.properties`)
+```properties
+# Base Y level where the arena floor is built
+arena-base-y=64
+
+# Arena type: simple or detailed
+arena-type=detailed
+```
+
+### NPC Configuration
+NPCs are configured in-memory via commands:
+- **Count**: 0-4 NPCs (default: 1)
+- **Health**: 1.0+ (default: 20.0)
+- **Damage**: 1.0+ (default: 5.0)
+- **Attack Type**: `arrow` (spectral) or `fireball` (default: fireball)
+
+### Combat Kit
+Players automatically receive:
+- Enchanted bow (Power I, Punch I, Infinity)
+- 5 arrows (capped at 10 max)
+- Arrows persist in world and can be picked up
+- Limited to 5 arrows per online player
 
 ## Rebuilding Arena
 
@@ -182,16 +321,7 @@ To regenerate the arena with different settings:
 rm -rf server/world
 
 # Edit config and restart (arena will regenerate)
-nano server/phau.properties  # Change arena-type
-```
-
-## Commands
-
-In-game (requires OP):
-```
-/arena simple     - Rebuild with simple arena
-/arena detailed   - Rebuild with detailed arena
-/arena rebuild    - Rebuild same type
+nano server/phau.properties  # Change arena-type or arena-base-y
 ```
 
 ## Troubleshooting
@@ -204,6 +334,16 @@ In-game (requires OP):
 - Ubuntu/Debian: `sudo apt install openjdk-21-jdk`
 - macOS: `brew install openjdk@21`
 - Windows: Download from [Oracle](https://www.oracle.com/java/technologies/downloads/#java21) or [Adoptium](https://adoptium.net/)
+
+### Missing Required Plugins
+
+**Symptom**: `CRITICAL ERROR: Citizens plugin is not installed!`
+
+**Solution**: The server will shut down automatically. Download and install:
+1. Citizens from https://wiki.citizensnpcs.co/Versions
+2. Sentinel from https://wiki.citizensnpcs.co/Sentinel
+
+Place JARs in `server/plugins/` and restart.
 
 ### Paper Download Failure
 
@@ -237,6 +377,7 @@ gradle wrapper
 1. Check plugin JAR exists: `ls plugins/colosseum-arena-1.0.jar`
 2. Verify build: `./gradlew jar`
 3. Check server logs: `cat server/logs/latest.log | grep Arena`
+4. Ensure Citizens and Sentinel are installed
 
 ### Arena Not Building
 
@@ -272,14 +413,84 @@ lsof -i :25565
 1. Edit `build.gradle.kts` (not recommended)
 2. Or use external server script with more RAM
 
+## Code Formatting
+
+This project uses **ktlint** via the `jlleitschuh/ktlint-gradle` plugin.
+
+```bash
+# Check code style (read-only)
+./gradlew ktlintCheck
+
+# Auto-format code
+./gradlew ktlintFormat
+
+# Full check (tests + lint)
+./gradlew check
+```
+
+Formatting rules are enforced by ktlint:
+- Trailing commas required
+- 4-space indentation
+- Import ordering
+- Max 80 columns (see `.editorconfig`)
+
+## Testing
+
+```bash
+# Run all tests
+./gradlew test
+
+# Run tests with coverage
+./gradlew test jacocoTestReport
+
+# Run tests in specific package
+./gradlew test --tests "com.colosseum.arena.*"
+```
+
+Tests are located in `src/test/kotlin/` following the package structure.
+
 ## Plugin Extension
 
 To extend the plugin:
 
-1. Edit `src/main/kotlin/com/colosseum/arena/ArenaPlugin.kt`
-2. Add commands in `plugin.yml`
-3. Rebuild: `./gradlew jar`
-4. Copy new JAR: `cp build/libs/*.jar server/plugins/`
+1. Edit source files in `src/main/kotlin/com/colosseum/arena/`
+2. Add commands in `ArenaCommand.kt` enum
+3. Implement in appropriate command handler
+4. Rebuild: `./gradlew jar`
+5. Copy new JAR: `cp build/libs/*.jar server/plugins/`
+
+## Architecture
+
+### Design Principles
+- **Composition over inheritance**: Prefer delegation and composition
+- **Sealed classes**: Used for type-safe hierarchies
+- **Enums over strings**: Type-safe configuration (ArenaType, NPCAttackType)
+- **Facade pattern**: ArenaManager delegates to specialized components
+- **Fail fast**: Critical errors stop server immediately
+
+### Key Components
+
+**ArenaManager** (`manager/ArenaManager.kt`)
+- Facade for all arena operations
+- Delegates spawn logic to PlayerSpawner
+- Supports sync and async building
+- Manages PDC (Persistent Data Container) state
+
+**NPCManager** (`NPCManager.kt`)
+- Manages Sentinel NPCs for combat
+- Configurable health, damage, count, attack type
+- Integrates with Citizens API
+
+**ArrowTracker** (`combat/ArrowTracker.kt`)
+- Converts shot arrows to persistent items
+- Enforces 5 arrows per player limit
+- Items have unlimited lifetime
+
+**Command System** (`commands/`)
+- Enum-based command definitions with aliases
+- Categorized handlers (Build, Player, NPC, Info)
+- Command logging for audit trail
+- Tab completion support
 
 ## JVM Flags Explanation
 
@@ -308,22 +519,57 @@ See [JVM Tuning Guide](https://docs.oracle.com/en/java/javase/21/gctuning/) for 
 ### Arena Geometry
 
 - **Center**: X=0, Z=0
-- **Ground**: Y=64
+- **Ground**: Y=64 (configurable via `arena-base-y`)
 - **Spawn**: (0, 65, 0)
 - **Wall thickness**: 7.5 blocks (12.0 ≤ r ≤ 19.5)
+- **NPC spawn radius**: 6 blocks from center
+- **Player spawn positions**: E (0°, r=8), S (90°, r=8), W (180°, r=8), N (270°, r=8)
 
 ### Build Process
 
-1. Plugin checks PDC (Persistent Data Container) for `arena_built` key
-2. If absent: synchronous block placement (~45k blocks)
-3. Sets `arena_built=1` and `arena_type` to prevent rebuild
-4. Sets world spawn point
+1. Plugin checks PDC for `arena_built` key
+2. If absent: blocks are queued and placed
+3. Synchronous: immediate placement (may cause lag)
+4. Asynchronous: 100 blocks per tick (lag-free)
+5. Spawn markers built at cardinal points
+6. NPCs spawned at positions around center
+7. Sets `arena_built=1` and `arena_type` to prevent rebuild
+8. Sets world spawn point
 
 ### Dependencies
 
-- Kotlin 2.0.x (compile-only)
-- Paper API 1.21.4 (compile-only)
-- Zero runtime dependencies
+- **Kotlin** 2.0.x (compile-only)
+- **Paper API** 1.21.11-R0.1-SNAPSHOT (compile-only)
+- **Citizens** 2.0.37-SNAPSHOT (runtime required)
+- **Sentinel** 2.9.3-SNAPSHOT (runtime required)
+- **Kotlin stdlib** (shaded in JAR)
+- **JUnit** 5.10.0 (test only)
+
+### Version Management
+
+Version info stored in `src/main/resources/version.properties`:
+- Auto-updates during build with git info
+- Format: `1.0+<git-short-hash>`
+- Includes build timestamp and git branch
+- Use `VersionInfo.load(plugin)` to access
+
+## Git Workflow
+
+This project follows **GitHub Flow** with `--no-ff` merges.
+
+### Branch Naming
+- `main` - Production-ready code (never commit directly)
+- `feat/*` - New features (e.g., `feat/npc-fireballs`)
+- `fix/*` - Bug fixes (e.g., `fix/spawn-location`)
+- `experiment/*` - Testing ideas (delete when done)
+
+### Commit Message Format
+```
+type(scope): description
+
+Types: feat, fix, refactor, test, docs, chore
+Example: feat(npcs): add configurable fireball attack type
+```
 
 ## License
 
@@ -334,5 +580,7 @@ By running this server, you accept the [Minecraft EULA](https://aka.ms/Minecraft
 - PaperMC: https://papermc.io
 - Paper Docs: https://docs.papermc.io
 - Paper API: https://jd.papermc.io/paper/1.21.4/
+- Citizens: https://wiki.citizensnpcs.co/
+- Sentinel: https://wiki.citizensnpcs.co/Sentinel
 - Kotlin: https://kotlinlang.org
 - JVM Tuning: https://docs.oracle.com/en/java/javase/21/gctuning/
