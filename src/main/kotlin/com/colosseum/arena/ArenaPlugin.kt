@@ -2,6 +2,7 @@ package com.colosseum.arena
 
 import com.colosseum.arena.commands.ArenaCommand
 import com.colosseum.arena.commands.BuildCommands
+import com.colosseum.arena.commands.CommandDisplay
 import com.colosseum.arena.commands.CommandLogger
 import com.colosseum.arena.commands.CommandSuggestion
 import com.colosseum.arena.commands.InfoCommands
@@ -116,6 +117,10 @@ class ArenaPlugin : JavaPlugin(), Listener {
         manager?.let {
             logger.info("${prefix}Arrow system: Max ${it.arrowTracker.getMaxAllowed()} arrows (${it.arrowTracker.getArrowCount()} per player)")
         }
+        
+        // Display all available commands in brilliant purple
+        val commandDisplay = CommandDisplay(logger)
+        commandDisplay.displayAllCommands()
     }
     
     /**
