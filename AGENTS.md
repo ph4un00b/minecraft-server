@@ -7,71 +7,21 @@ This file contains guidelines and commands for agentic coding agents working in 
 This is a Kotlin-based Minecraft PaperMC plugin that auto-generates gothic colosseum arenas. The project uses Gradle for building and follows Kotlin conventions with Java 21 toolchain.
 
 
-
 ## Code Style Guidelines
 
+- always ask for clarification never assume
+- avoid inheritance
+- always ask me when boolean are gonna be used, maybe en enumerator is better
 - prefer enums over strings when apropiate
 - prefer sealed classes
 - composition over inheritance
 - arena-manager is mostly a facede and uses delegation for other behaviors
-
-### Kotlin Conventions
-- **Target**: JVM 21
-- **Warnings**: All warnings as errors (`-Werror`)
-- **Linting**: Full linting enabled
-- **Formatting**: Follow Kotlin standard conventions
-- **Null Safety**: Use nullable types (`?`) and non-null assertions (`!!`) appropriately
-
-
-
-### Naming Conventions
-- **Classes**: PascalCase (e.g., `ArenaPlugin`, `ArenaManager`)
-- **Functions**: camelCase (e.g., `checkAndBuild`, `initializeComponents`)
-- **Variables**: camelCase (e.g., `versionInfo`, `arrowTracker`)
-- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_ARROWS`)
-- **Packages**: lowercase with dots (e.g., `com.colosseum.arena`)
-
 
 ### Error Handling
 - Use try-catch blocks for initialization failures
 - Log errors with appropriate severity (`logger.severe`, `logger.warning`)
 - Fail fast in `onEnable()` if critical components fail
 - Use meaningful error messages with context
-
-### Logging Conventions
-```kotlin
-// Use prefix for all plugin logs
-private val prefix = "\u001B[32m[ArenaPlugin]\u001B[0m "
-
-// Log levels
-logger.info("$prefix Message")      // General info
-logger.warning("$prefix Warning")   // Warnings
-logger.severe("$prefix Error")      // Critical errors
-```
-
-### Data Classes
-- Use data classes for simple data holders
-- Include companion objects for factory methods when needed
-- Follow the pattern in `VersionInfo` data class
-
-### Plugin Architecture
-- **Main Class**: Extends `JavaPlugin`, implements `Listener`
-- **Components**: Initialize in `initializeComponents()` method
-- **Manager Pattern**: Use `ArenaManager` as facade for complex operations
-- **Event Handling**: Register events in `onEnable()`, unregister in `onDisable()`
-
-### Command Structure
-- Commands in `onCommand()` method
-- Permission checking first
-- Help message for empty arguments
-- Use when expressions for command routing
-- Return `true` for handled commands, `false` for unhandled
-
-### Arena Building
-- Check `arena_built` PDC key before building
-- Use synchronous block placement for arena construction
-- Set spawn point after arena build
-- Log build progress and completion
 
 ### Version Management
 - Version info stored in `version.properties`
@@ -81,11 +31,13 @@ logger.severe("$prefix Error")      // Critical errors
 
 ## Testing Guidelines
 
+- always ask me if mocking is gonna be used
+- never hardcode values in order to pass tests
+
 ### Test Structure
 - Test classes in `src/test/kotlin/` following package structure
 - Use descriptive test method names
 - Test both happy path and error conditions
-- Mock Bukkit API where necessary
 
 ### Test Commands
 ```bash
