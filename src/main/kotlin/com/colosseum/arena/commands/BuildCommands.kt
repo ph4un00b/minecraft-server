@@ -4,59 +4,174 @@ import com.colosseum.arena.domain.ArenaType
 import com.colosseum.arena.manager.ArenaManager
 import org.bukkit.World
 import org.bukkit.command.CommandSender
+import org.bukkit.plugin.java.JavaPlugin
 
 /**
  * Handles build-related commands: simple, detailed, rebuild, sety
+ * Supports both sync (fast) and async (lag-free) building modes
  */
 class BuildCommands(
     private val arenaManager: ArenaManager,
     private val world: World,
-    private val commandLogger: CommandLogger
+    private val commandLogger: CommandLogger,
+    private val plugin: JavaPlugin
 ) {
-    fun execute(cmd: ArenaCommand, args: Array<out String>, sender: CommandSender) {
+
+    fun execute(cmd: ArenaCommand, args: Array<out String>, sender: CommandSender, forceSync: Boolean = false) {
         when (cmd) {
-            ArenaCommand.SIMPLE -> handleSimple(sender, args)
-            ArenaCommand.DETAILED -> handleDetailed(sender, args)
-            ArenaCommand.REBUILD -> handleRebuild(sender, args)
+            ArenaCommand.SIMPLE -> {
+                if (forceSync) {
+                    handleSimpleSync(sender, args)
+                } else {
+                    handleSimpleAsync(sender, args)
+                }
+            }
+            ArenaCommand.DETAILED -> {
+                if (forceSync) {
+                    handleDetailedSync(sender, args)
+                } else {
+                    handleDetailedAsync(sender, args)
+                }
+            }
+            ArenaCommand.REBUILD -> {
+                if (forceSync) {
+                    handleRebuildSync(sender, args)
+                } else {
+                    handleRebuildAsync(sender, args)
+                }
+            }
             ArenaCommand.SET_Y -> handleSetY(sender, args)
             else -> throw IllegalArgumentException("Unexpected command: $cmd")
         }
     }
 
-    private fun handleSimple(sender: CommandSender, args: Array<out String>) {
-        sender.sendMessage("${ArenaCommand.PREFIX}Building simple arena with spawn markers...")
+    /**
+     * Check if a build is currently in progress
+     */
+    fun isBuilding(): Boolean = arenaManager.isBuilding()
+
+    private fun handleSimpleSync(sender: CommandSender, args: Array<out String>) {
+        sender.sendMessage("${ArenaCommand.PREFIX}Building simple arena...")
         try {
             arenaManager.rebuild(world, ArenaType.SIMPLE)
             sender.sendMessage("${ArenaCommand.PREFIX}Simple arena built! Spawns at E/S/W/N inner edge")
-            commandLogger.logCommand(sender, ArenaCommand.SIMPLE, args, true, mapOf("type" to "simple"))
+            commandLogger.logCommand(sender, ArenaCommand.SIMPLE, args, true, mapOf("type" to "simple", "mode" to "sync"))
         } catch (e: Exception) {
-            commandLogger.logCommand(sender, ArenaCommand.SIMPLE, args, false, mapOf("error" to e.message.orEmpty()))
+            commandLogger.logCommand(sender, ArenaCommand.SIMPLE, args, false, mapOf("error" to e.message.orEmpty(), "mode" to "sync"))
             throw e
         }
     }
 
-    private fun handleDetailed(sender: CommandSender, args: Array<out String>) {
-        sender.sendMessage("${ArenaCommand.PREFIX}Building detailed gothic arena with spawn markers...")
+    private fun handleSimpleAsync(sender: CommandSender, args: Array<out String>) {
+        if (arenaManager.isBuilding()) {
+            sender.sendMessage("${ArenaCommand.PREFIX}Another build is already in progress. Please wait.")
+            return
+        }
+
+        sender.sendMessage("${ArenaCommand.PREFIX}Starting async simple arena build...")
+        commandLogger.logCommand(sender, ArenaCommand.SIMPLE, args, true, mapOf("type" to "simple", "mode" to "async", "status" to "started"))
+
+        try {
+            arenaManager.rebuildAsync(
+                world = world,
+                type = ArenaType.SIMPLE,
+                onProgress = { placed, total, percentage ->
+                    if (percentage % 25 == 0) {
+                        sender.sendMessage("${ArenaCommand.PREFIX}Building... $percentage% ($placed/$total blocks)")
+                    }
+                },
+                onComplete = {
+                    sender.sendMessage("${ArenaCommand.PREFIX}Simple arena built! Spawns at E/S/W/N inner edge")
+                    commandLogger.logCommand(sender, ArenaCommand.SIMPLE, args, true, mapOf("type" to "simple", "mode" to "async", "status" to "completed"))
+                }
+            )
+        } catch (e: Exception) {
+            sender.sendMessage("${ArenaCommand.PREFIX}Error during build: ${e.message}")
+            commandLogger.logCommand(sender, ArenaCommand.SIMPLE, args, false, mapOf("error" to e.message.orEmpty(), "mode" to "async"))
+        }
+    }
+
+    private fun handleDetailedSync(sender: CommandSender, args: Array<out String>) {
+        sender.sendMessage("${ArenaCommand.PREFIX}Building detailed gothic arena...")
         try {
             arenaManager.rebuild(world, ArenaType.DETAILED)
             sender.sendMessage("${ArenaCommand.PREFIX}Detailed arena built! Spawns at E/S/W/N inner edge")
-            commandLogger.logCommand(sender, ArenaCommand.DETAILED, args, true, mapOf("type" to "detailed"))
+            commandLogger.logCommand(sender, ArenaCommand.DETAILED, args, true, mapOf("type" to "detailed", "mode" to "sync"))
         } catch (e: Exception) {
-            commandLogger.logCommand(sender, ArenaCommand.DETAILED, args, false, mapOf("error" to e.message.orEmpty()))
+            commandLogger.logCommand(sender, ArenaCommand.DETAILED, args, false, mapOf("error" to e.message.orEmpty(), "mode" to "sync"))
             throw e
         }
     }
 
-    private fun handleRebuild(sender: CommandSender, args: Array<out String>) {
+    private fun handleDetailedAsync(sender: CommandSender, args: Array<out String>) {
+        if (arenaManager.isBuilding()) {
+            sender.sendMessage("${ArenaCommand.PREFIX}Another build is already in progress. Please wait.")
+            return
+        }
+
+        sender.sendMessage("${ArenaCommand.PREFIX}Starting async detailed arena build...")
+        commandLogger.logCommand(sender, ArenaCommand.DETAILED, args, true, mapOf("type" to "detailed", "mode" to "async", "status" to "started"))
+
+        try {
+            arenaManager.rebuildAsync(
+                world = world,
+                type = ArenaType.DETAILED,
+                onProgress = { placed, total, percentage ->
+                    if (percentage % 10 == 0) {
+                        sender.sendMessage("${ArenaCommand.PREFIX}Building... $percentage% ($placed/$total blocks)")
+                    }
+                },
+                onComplete = {
+                    sender.sendMessage("${ArenaCommand.PREFIX}Detailed arena built! Spawns at E/S/W/N inner edge")
+                    commandLogger.logCommand(sender, ArenaCommand.DETAILED, args, true, mapOf("type" to "detailed", "mode" to "async", "status" to "completed"))
+                }
+            )
+        } catch (e: Exception) {
+            sender.sendMessage("${ArenaCommand.PREFIX}Error during build: ${e.message}")
+            commandLogger.logCommand(sender, ArenaCommand.DETAILED, args, false, mapOf("error" to e.message.orEmpty(), "mode" to "async"))
+        }
+    }
+
+    private fun handleRebuildSync(sender: CommandSender, args: Array<out String>) {
         val currentType = arenaManager.getCurrentType()
         sender.sendMessage("${ArenaCommand.PREFIX}Rebuilding arena (type: ${currentType.name.lowercase()})...")
         try {
             arenaManager.rebuild(world, currentType)
             sender.sendMessage("${ArenaCommand.PREFIX}Arena rebuilt! Spawn markers restored.")
-            commandLogger.logCommand(sender, ArenaCommand.REBUILD, args, true, mapOf("type" to currentType.name.lowercase()))
+            commandLogger.logCommand(sender, ArenaCommand.REBUILD, args, true, mapOf("type" to currentType.name.lowercase(), "mode" to "sync"))
         } catch (e: Exception) {
-            commandLogger.logCommand(sender, ArenaCommand.REBUILD, args, false, mapOf("error" to e.message.orEmpty()))
+            commandLogger.logCommand(sender, ArenaCommand.REBUILD, args, false, mapOf("error" to e.message.orEmpty(), "mode" to "sync"))
             throw e
+        }
+    }
+
+    private fun handleRebuildAsync(sender: CommandSender, args: Array<out String>) {
+        if (arenaManager.isBuilding()) {
+            sender.sendMessage("${ArenaCommand.PREFIX}Another build is already in progress. Please wait.")
+            return
+        }
+
+        val currentType = arenaManager.getCurrentType()
+        sender.sendMessage("${ArenaCommand.PREFIX}Starting async arena rebuild (type: ${currentType.name.lowercase()})...")
+        commandLogger.logCommand(sender, ArenaCommand.REBUILD, args, true, mapOf("type" to currentType.name.lowercase(), "mode" to "async", "status" to "started"))
+
+        try {
+            arenaManager.rebuildAsync(
+                world = world,
+                type = currentType,
+                onProgress = { placed, total, percentage ->
+                    if (percentage % 10 == 0) {
+                        sender.sendMessage("${ArenaCommand.PREFIX}Rebuilding... $percentage% ($placed/$total blocks)")
+                    }
+                },
+                onComplete = {
+                    sender.sendMessage("${ArenaCommand.PREFIX}Arena rebuilt! Spawn markers restored.")
+                    commandLogger.logCommand(sender, ArenaCommand.REBUILD, args, true, mapOf("type" to currentType.name.lowercase(), "mode" to "async", "status" to "completed"))
+                }
+            )
+        } catch (e: Exception) {
+            sender.sendMessage("${ArenaCommand.PREFIX}Error during rebuild: ${e.message}")
+            commandLogger.logCommand(sender, ArenaCommand.REBUILD, args, false, mapOf("error" to e.message.orEmpty(), "mode" to "async"))
         }
     }
 

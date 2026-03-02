@@ -6,10 +6,12 @@ import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.plugin.java.JavaPlugin
+import org.bukkit.scheduler.BukkitRunnable
 import com.colosseum.arena.domain.ArenaType
 import com.colosseum.arena.domain.ArenaConfig
 import com.colosseum.arena.builders.SimpleArena
 import com.colosseum.arena.builders.DetailedArena
+import com.colosseum.arena.builders.QueuedBlockPlacer
 import com.colosseum.arena.operations.ArenaClearer
 import com.colosseum.arena.operations.YLevelChanger
 import com.colosseum.arena.operations.PlayerSpawner
@@ -22,8 +24,14 @@ import com.colosseum.arena.NPCManager
 /**
  * Arena Manager - Facade for all arena operations
  * Delegates spawn logic to PlayerSpawner
+ * Supports both sync and async arena building
  */
 class ArenaManager(private val plugin: JavaPlugin) {
+
+    companion object {
+        const val BLOCKS_PER_TICK = 100  // Number of blocks to place per tick
+        const val PROGRESS_INTERVAL = 20L // Show progress every second (20 ticks)
+    }
 
     private val storage by lazy { PropertiesStorage { msg -> plugin.logger.info(msg) } }
     private val simpleArena by lazy { SimpleArena() }
@@ -37,6 +45,14 @@ class ArenaManager(private val plugin: JavaPlugin) {
     
     private val arenaBuiltKey = NamespacedKey(plugin, "arena_built")
     private val arenaTypeKey = NamespacedKey(plugin, "arena_type")
+
+    /**
+     * Check if an async build is currently in progress
+     */
+    @Volatile
+    private var isBuilding = false
+
+    fun isBuilding(): Boolean = isBuilding
 
     /**
      * Get the next spawn point for a player
@@ -98,7 +114,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
     }
 
     /**
-     * Rebuild arena at current location
+     * Rebuild arena synchronously (immediate, may cause lag)
      */
     fun rebuild(world: World, type: ArenaType) {
         // Clear area blocks
@@ -126,6 +142,90 @@ class ArenaManager(private val plugin: JavaPlugin) {
         val pdc = world.persistentDataContainer
         pdc.set(arenaBuiltKey, PersistentDataType.INTEGER, 1)
         pdc.set(arenaTypeKey, PersistentDataType.STRING, type.name.lowercase())
+    }
+
+    /**
+     * Rebuild arena asynchronously (lag-free, gradual placement)
+     * @param world The world to build in
+     * @param type The arena type
+     * @param onProgress Called with (placedCount, totalCount, percentage)
+     * @param onComplete Called when build is finished
+     */
+    fun rebuildAsync(
+        world: World,
+        type: ArenaType,
+        onProgress: (Int, Int, Int) -> Unit = { _, _, _ -> },
+        onComplete: () -> Unit = {}
+    ) {
+        if (isBuilding) {
+            throw IllegalStateException("Another async build is already in progress")
+        }
+
+        isBuilding = true
+
+        // Clear area blocks
+        clearer.clear(world)
+        
+        // Clear all persistent arrows
+        arrowTracker.clearAllArrows()
+        
+        // Clear NPCs
+        npcManager.clearAllNPCs()
+
+        // Queue all blocks for placement
+        val placer = QueuedBlockPlacer()
+        val config = ArenaConfig(storage.arenaBaseY, type)
+        
+        when (type) {
+            ArenaType.SIMPLE -> simpleArena.build(world, config, placer)
+            ArenaType.DETAILED -> detailedArena.build(world, config, placer)
+        }
+
+        val blocks = placer.getBlocks()
+        val totalBlocks = blocks.size
+        var placedBlocks = 0
+
+        // Start async placement
+        object : BukkitRunnable() {
+            private var lastProgressUpdate = 0
+
+            override fun run() {
+                if (placedBlocks >= totalBlocks) {
+                    // Build complete
+                    isBuilding = false
+                    
+                    // Build spawn markers and spawn NPCs
+                    buildSpawnMarkers(world)
+                    npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
+                    resetSpawnRotation()
+
+                    // Update PDC
+                    val pdc = world.persistentDataContainer
+                    pdc.set(arenaBuiltKey, PersistentDataType.INTEGER, 1)
+                    pdc.set(arenaTypeKey, PersistentDataType.STRING, type.name.lowercase())
+                    
+                    onComplete()
+                    cancel()
+                    return
+                }
+
+                // Place next batch
+                val endIndex = minOf(placedBlocks + BLOCKS_PER_TICK, totalBlocks)
+                for (i in placedBlocks until endIndex) {
+                    val block = blocks[i]
+                    block.world.getBlockAt(block.x, block.y, block.z).type = block.material
+                }
+
+                placedBlocks = endIndex
+                val percentage = (placedBlocks * 100 / totalBlocks)
+                
+                // Update progress every second or at milestones
+                if (placedBlocks - lastProgressUpdate >= BLOCKS_PER_TICK * 20 || percentage % 10 == 0) {
+                    onProgress(placedBlocks, totalBlocks, percentage)
+                    lastProgressUpdate = placedBlocks
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 1L) // Run every tick
     }
 
     /**
@@ -181,7 +281,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
     }
 
     /**
-     * Private: delegate build to appropriate builder
+     * Private: delegate build to appropriate builder (sync)
      */
     private fun build(world: World, type: ArenaType) {
         val config = ArenaConfig(storage.arenaBaseY, type)

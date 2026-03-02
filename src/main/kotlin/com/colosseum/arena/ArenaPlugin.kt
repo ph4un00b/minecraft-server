@@ -61,23 +61,8 @@ class ArenaPlugin : JavaPlugin(), Listener {
 
     private val prefix = ArenaCommand.PREFIX
 
-    // Pending destructive operation tracker
-    private var pendingOperation: PendingOperation? = null
-    private var countdownTask: org.bukkit.scheduler.BukkitTask? = null
-
     // Command logger for audit trail
     private lateinit var commandLogger: CommandLogger
-
-    /**
-     * Data class to track pending destructive commands
-     */
-    data class PendingOperation(
-        val sender: CommandSender,
-        val command: ArenaCommand,
-        val args: Array<out String>,
-        val executeTime: Long,
-        val description: String
-    )
 
     override fun onEnable() {
         logger.info("${prefix}Enabling Colosseum Arena Plugin...")
@@ -328,21 +313,23 @@ override fun onCommand(
                 return true
             }
 
+            // Check if a build is in progress for build commands
+            val isBuildCommand = cmd in listOf(ArenaCommand.SIMPLE, ArenaCommand.DETAILED, ArenaCommand.REBUILD)
+            
             // Initialize command category handlers with dependency injection
-            val buildCommands = BuildCommands(currentMgr, world, commandLogger)
+            val buildCommands = BuildCommands(currentMgr, world, commandLogger, this)
             val playerCommands = PlayerCommands(currentMgr, commandLogger)
             val npcCommands = NPCCommands(currentMgr.npcManager, commandLogger)
             val infoCommands = InfoCommands(versionInfo, currentMgr, commandLogger)
 
             // Handle cancel command first
             if (cmd == ArenaCommand.CANCEL) {
-                if (pendingOperation != null) {
-                    cancelPendingOperation()
-                    sender.sendMessage("${prefix}Cancelled pending ${pendingOperation?.description}")
-                    commandLogger.logCommand(sender, cmd, args, true)
+                if (buildCommands.isBuilding()) {
+                    sender.sendMessage("${prefix}Cannot cancel - build is already in progress and cannot be interrupted")
+                    commandLogger.logCommand(sender, cmd, args, false, mapOf("reason" to "build_in_progress_no_cancel"))
                 } else {
-                    sender.sendMessage("${prefix}No pending operation to cancel")
-                    commandLogger.logCommand(sender, cmd, args, false, mapOf("reason" to "no_pending_operation"))
+                    sender.sendMessage("${prefix}No operation to cancel")
+                    commandLogger.logCommand(sender, cmd, args, false, mapOf("reason" to "no_operation"))
                 }
                 return true
             }
@@ -354,29 +341,14 @@ override fun onCommand(
                 // Check for force flag
                 val hasForceFlag = args.size > 1 && args[1].equals("f", ignoreCase = true)
 
-                if (hasForceFlag) {
-                    // Execute immediately by stripping the 'f' flag
-                    val newArgs = args.filterIndexed { index, _ -> index != 1 }.toTypedArray()
-                    executeBuildCommand(buildCommands, cmd, newArgs, sender)
-                    return true
+                // Execute with appropriate mode (sync with 'f' flag, async by default)
+                val newArgs = if (hasForceFlag) {
+                    args.filterIndexed { index, _ -> index != 1 }.toTypedArray()
+                } else {
+                    args
                 }
-
-                // Cancel any existing pending operation
-                pendingOperation?.let {
-                    if (it.sender != sender) {
-                        it.sender.sendMessage("${prefix}Your pending ${it.description} was cancelled by ${sender.name}")
-                    }
-                    cancelPendingOperation()
-                }
-
-                // Queue new operation with countdown
-                val description = getOperationDescription(cmd, args)
-                pendingOperation = PendingOperation(sender, cmd, args, System.currentTimeMillis() + 5000, description)
-                sender.sendMessage("${prefix}${description} in 5 seconds... Type '/arena cancel' to stop")
-
-                // Start countdown
-                startCountdown(sender, description)
-                commandLogger.logCommand(sender, cmd, args, true, mapOf("status" to "queued", "delay" to "5s"))
+                
+                buildCommands.execute(cmd, newArgs, sender, hasForceFlag)
                 return true
             }
 
@@ -427,73 +399,11 @@ override fun onCommand(
                 ArenaCommand.SET_NPC_COUNT -> listOf("0", "1", "2", "3", "4")
                     .filter { it.startsWith(args[1]) }
                 ArenaCommand.SET_Y -> listOf(manager?.getCurrentBaseY()?.toString() ?: "64")
+                ArenaCommand.SIMPLE, ArenaCommand.DETAILED, ArenaCommand.REBUILD -> listOf("f")
+                    .filter { it.startsWith(args[1].lowercase()) }
                 else -> emptyList()
             }
             else -> emptyList()
         }
-    }
-
-    /**
-     * Execute a build command immediately
-     */
-    private fun executeBuildCommand(
-        buildCommands: BuildCommands,
-        cmd: ArenaCommand,
-        args: Array<out String>,
-        sender: CommandSender
-    ) {
-        buildCommands.execute(cmd, args, sender)
-    }
-
-    /**
-     * Get a human-readable description of the operation
-     */
-    private fun getOperationDescription(cmd: ArenaCommand, args: Array<out String>): String {
-        return when (cmd) {
-            ArenaCommand.SIMPLE -> "Building simple arena"
-            ArenaCommand.DETAILED -> "Building detailed arena"
-            ArenaCommand.REBUILD -> "Rebuilding arena"
-            ArenaCommand.SET_Y -> {
-                val yLevel = if (args.size > 1) args[1] else "current"
-                "Changing arena Y level to $yLevel"
-            }
-            else -> "Executing command"
-        }
-    }
-
-    /**
-     * Cancel the current pending operation
-     */
-    private fun cancelPendingOperation() {
-        countdownTask?.cancel()
-        countdownTask = null
-        pendingOperation = null
-    }
-
-    /**
-     * Start countdown for pending operation
-     */
-    private fun startCountdown(sender: CommandSender, description: String) {
-        val operation = pendingOperation ?: return
-
-        countdownTask = Bukkit.getScheduler().runTaskTimer(this, Runnable {
-            val remaining = ((operation.executeTime - System.currentTimeMillis()) / 1000).toInt()
-
-            if (remaining <= 0) {
-                // Execute the operation
-                pendingOperation?.let { op ->
-                    val world = server.getWorld("world")
-                    val currentMgr = manager
-                    if (world != null && currentMgr != null) {
-                        val buildCommands = BuildCommands(currentMgr, world, commandLogger)
-                        buildCommands.execute(op.command, op.args, op.sender)
-                    }
-                    cancelPendingOperation()
-                }
-            } else if (remaining < 5) {
-                // Show countdown numbers (4, 3, 2, 1)
-                sender.sendMessage("${prefix}$remaining...")
-            }
-        }, 0L, 20L) // Run every second (20 ticks)
     }
 }
