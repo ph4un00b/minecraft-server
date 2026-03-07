@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-03-07
+
+### Added
+- **NPC Combat Enhancements**:
+  - New FIREBALL attack type (20% probability) with blaze rod equipment
+  - Dynamic command validation using enum's `validCommandNames` property
+  - Victory sound (ENTITY_PLAYER_LEVELUP) when batch is cleared
+  - Title screen notification "BATCH #N CLEARED!" with next batch size
+  - Action bar message "Target hit! NPCs are now HOSTILE!" on target activation
+- **ArenaMessage System**: New sealed class for broadcasting messages to all players
+  - `BatchCleared` title message with batch number and next enemy count
+  - `TargetActivated` action bar message for target block hits
+  - `broadcast(world)` method to send to all players in arena world
+- **NPCManager.reset()**: Single method to reset all NPC state for arena rebuilds
+  - Clears NPCs, resets batch index, restores starting batch size
+  - Clears spawn tracking and resets target block listener
+- **Regression Tests**: BatchIndexTest to prevent batch tracking bugs
+- Dragon growl sound (ENTITY_ENDER_DRAGON_GROWL) when target block is hit
+
 ### Changed
 - **Major Refactoring**: Restructured entire codebase with feature-based package organization
   - Moved combat files to `com.colosseum.combat.*` (kit, arrow, spawn)
@@ -19,10 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Tests now in matching packages: `npc/`, `commands/`
   - Moved test resources to `src/test/resources/`
 - Updated all documentation (README.md, AGENTS.md) with new structure
+- Arena rebuilds now use `npcManager.reset()` instead of multiple separate calls
+- NPC probability distribution adjusted (existing types scaled to 80% to accommodate fireball)
 
 ### Fixed
 - Import ordering across all files (ktlint compliance)
 - Test resource path in CommandDisplayTest
+- **Batch Index Bug**: Fixed issue where batch number always showed as #1
+  - Separated `clearAllNPCs()` from `resetBatchIndex()` concerns
+  - Batch index now properly increments between waves
+  - Only resets to 1 on full arena rebuilds or manual NPC count changes
 
 ## [1.2.0] - 2026-03-01
 
@@ -51,6 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Player combat kit and arrow tracking
 - Command categorization and help system
 
-[Unreleased]: https://github.com/ph4un00b/minecraft-server/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/ph4un00b/minecraft-server/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/ph4un00b/minecraft-server/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/ph4un00b/minecraft-server/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/ph4un00b/minecraft-server/releases/tag/v1.1.1
