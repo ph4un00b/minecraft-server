@@ -3,16 +3,28 @@ import java.nio.channels.Channels
 
 tasks.register("downloadPlugins") {
     group = "setup"
-    description = "Downloads Citizens and Sentinel plugins to server/plugins"
+    description = "Downloads Citizens and Sentinel plugins to server/plugins (use -PforceDownload to re-download)"
     
     dependsOn("downloadPaper")
     
     doLast {
         file("server/plugins").mkdirs()
         
+        val forceDownload = project.hasProperty("forceDownload")
+        
         // Download Citizens - build 4129 (latest, compatible with Paper 1.21.11+)
         val citizensUrl = "https://ci.citizensnpcs.co/job/Citizens2/4129/artifact/dist/target/Citizens-2.0.41-b4129.jar"
         val citizensFile = file("server/plugins/Citizens.jar")
+        
+        if (citizensFile.exists()) {
+            if (forceDownload) {
+                println("[INFO] Force download enabled. Deleting existing Citizens plugin...")
+                citizensFile.delete()
+            } else {
+                println("[INFO] Citizens already exists: server/plugins/Citizens.jar")
+                println("[INFO] Use -PforceDownload to re-download")
+            }
+        }
         
         if (!citizensFile.exists()) {
             println("[INFO] Downloading Citizens build 4129 (latest, 1.21.11+ compatible)...")
@@ -24,13 +36,21 @@ tasks.register("downloadPlugins") {
                 println("[ERROR] Please manually download from: https://ci.citizensnpcs.co/job/Citizens2/")
                 throw e
             }
-        } else {
-            println("[INFO] Citizens already exists: server/plugins/Citizens.jar")
         }
         
         // Download Sentinel - build 533
         val sentinelUrl = "https://ci.citizensnpcs.co/job/Sentinel/533/artifact/target/Sentinel-2.9.3-SNAPSHOT-b533.jar"
         val sentinelFile = file("server/plugins/Sentinel.jar")
+        
+        if (sentinelFile.exists()) {
+            if (forceDownload) {
+                println("[INFO] Force download enabled. Deleting existing Sentinel plugin...")
+                sentinelFile.delete()
+            } else {
+                println("[INFO] Sentinel already exists: server/plugins/Sentinel.jar")
+                println("[INFO] Use -PforceDownload to re-download")
+            }
+        }
         
         if (!sentinelFile.exists()) {
             println("[INFO] Downloading Sentinel build 533...")
@@ -42,11 +62,9 @@ tasks.register("downloadPlugins") {
                 println("[ERROR] Please manually download from: https://ci.citizensnpcs.co/job/Sentinel/")
                 throw e
             }
-        } else {
-            println("[INFO] Sentinel already exists: server/plugins/Sentinel.jar")
         }
         
-        println("[INFO] All required plugins downloaded")
+        println("[INFO] All required plugins ready")
     }
 }
 
