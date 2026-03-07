@@ -109,6 +109,9 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 logger.info(
                     "${prefix}Arena already built. Spawning NPCs...",
                 )
+                // Set up target block listener for existing arena
+                val baseY = mgr.getCurrentBaseY()
+                mgr.targetBlockListener.setWorldInfo(world, baseY)
                 // Spawn NPCs even if arena was already built
                 mgr.npcManager.spawnArenaNPCs(world, mgr.getCurrentBaseY())
             }

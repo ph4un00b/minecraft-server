@@ -99,6 +99,15 @@ class SimpleArena : ArenaBuilder {
                 Material.STONE_BRICKS,
             )
         }
+
+        // Place target block at center
+        placer.setBlock(
+            world,
+            centerX,
+            groundY + 1,
+            centerZ,
+            Material.TARGET,
+        )
     }
 
     override fun buildSpawnMarkers(world: World, baseY: Int) {

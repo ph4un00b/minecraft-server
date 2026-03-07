@@ -14,6 +14,7 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.entity.EntityType
+import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDeathEvent
@@ -47,9 +48,15 @@ class NPCManager(
     private var currentBatchSize = 1
     private var lastSpawnWorld: World? = null
     private var lastSpawnBaseY: Int = 0
+    private var isHostile = false
+    private var targetBlockListener: TargetBlockListener? = null
 
     init {
         Bukkit.getPluginManager().registerEvents(this, plugin)
+    }
+
+    fun setTargetBlockListener(listener: TargetBlockListener) {
+        targetBlockListener = listener
     }
 
     fun spawnArenaNPCs(world: World, baseY: Int) {
@@ -90,6 +97,7 @@ class NPCManager(
         lastSpawnWorld = world
         lastSpawnBaseY = baseY
         currentBatchSize = npcCount
+        isHostile = false // Reset hostility on new spawn
 
         val attackTypes = NPCDecisions.selectRandomTypesForBatch(npcCount)
 
@@ -265,8 +273,8 @@ class NPCManager(
         sentinel.health = npcHealth
         sentinel.damage = npcDamage
 
-        // Target all players - use the proper API method
-        sentinel.addTarget("Event:Player")
+        // Don't add targets initially - NPCs start passive
+        // Targets will be added when target block is hit
 
         // Set to melee combat
         sentinel.attackRate = 10
@@ -276,6 +284,39 @@ class NPCManager(
         sentinel.spawnPoint = sentinel.npc?.storedLocation
         sentinel.respawnTime = -1
     }
+
+    fun activateHostility(activatingPlayer: Player) {
+        if (isHostile) {
+            return
+        }
+
+        isHostile = true
+        val registry = CitizensAPI.getNPCRegistry()
+
+        trackedNPCs.keys.forEach { npcId ->
+            val npc = registry.getById(npcId)
+            if (npc != null) {
+                val sentinel = npc.getOrAddTrait(SentinelTrait::class.java)
+                // Add player as specific target using PLAYER: prefix
+                sentinel.addTarget("PLAYER:${activatingPlayer.name}")
+                plugin.logger.info(
+                    "$YELLOW[ArenaPlugin] NPC $npcId is now targeting " +
+                        "${activatingPlayer.name}$RESET",
+                )
+            }
+        }
+
+        val count = trackedNPCs.size
+        plugin.logger.info(
+            "$YELLOW[ArenaPlugin] All NPCs activated! Count: $count$RESET",
+        )
+    }
+
+    fun deactivateHostility() {
+        isHostile = false
+    }
+
+    fun isHostile(): Boolean = isHostile
 
     @EventHandler
     fun onEntityDeath(event: EntityDeathEvent) {
@@ -292,6 +333,8 @@ class NPCManager(
                 val nextBatchSize = NPCDecisions.nextBatchSize(currentBatchSize)
                 currentBatchSize = nextBatchSize
                 npcCount = currentBatchSize
+                isHostile = false // Reset hostility for new batch
+                targetBlockListener?.reset() // Reset target block
                 plugin.logger.info(
                     "$YELLOW[ArenaPlugin] All NPCs dead. " +
                         "Spawning next batch: $currentBatchSize NPCs$RESET",

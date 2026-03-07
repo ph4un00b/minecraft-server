@@ -1,6 +1,7 @@
 package com.colosseum.arena.manager
 
 import com.colosseum.arena.NPCManager
+import com.colosseum.arena.TargetBlockListener
 import com.colosseum.arena.builders.DetailedArena
 import com.colosseum.arena.builders.QueuedBlockPlacer
 import com.colosseum.arena.builders.SimpleArena
@@ -45,6 +46,11 @@ class ArenaManager(private val plugin: JavaPlugin) {
     private val combatKit by lazy { CombatKit(KitConfig()) }
     val arrowTracker by lazy { ArrowTracker(plugin) }
     val npcManager by lazy { NPCManager(plugin, playerSpawner) }
+    val targetBlockListener by lazy {
+        TargetBlockListener(plugin, npcManager).also {
+            npcManager.setTargetBlockListener(it)
+        }
+    }
     private val yLevelChanger by lazy {
         YLevelChanger(storage, clearer, npcManager)
     }
@@ -109,6 +115,9 @@ class ArenaManager(private val plugin: JavaPlugin) {
         // Build spawn markers (delegated to PlayerSpawner)
         buildSpawnMarkers(world)
 
+        // Set up target block listener
+        targetBlockListener.setWorldInfo(world, storage.arenaBaseY)
+
         // Spawn NPCs after arena build
         npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
 
@@ -137,6 +146,9 @@ class ArenaManager(private val plugin: JavaPlugin) {
 
         // Build spawn markers (delegated to PlayerSpawner)
         buildSpawnMarkers(world)
+
+        // Set up target block listener
+        targetBlockListener.setWorldInfo(world, storage.arenaBaseY)
 
         // Spawn NPCs after arena build
         npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
@@ -204,6 +216,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
 
                     // Build spawn markers and spawn NPCs
                     buildSpawnMarkers(world)
+                    targetBlockListener.setWorldInfo(world, storage.arenaBaseY)
                     npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
                     resetSpawnRotation()
 

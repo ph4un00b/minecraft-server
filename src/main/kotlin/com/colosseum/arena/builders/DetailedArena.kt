@@ -343,7 +343,7 @@ class DetailedArena : ArenaBuilder {
             }
         }
 
-        // Center podium
+        // Center podium with target block
         for (x in -2..2) {
             for (z in -2..2) {
                 placer.setBlock(
@@ -355,6 +355,7 @@ class DetailedArena : ArenaBuilder {
                 )
             }
         }
-        placer.setBlock(world, centerX, groundY + 2, centerZ, Material.LANTERN)
+        // Place target block at center - hitting it activates NPC hostility
+        placer.setBlock(world, centerX, groundY + 2, centerZ, Material.TARGET)
     }
 }
