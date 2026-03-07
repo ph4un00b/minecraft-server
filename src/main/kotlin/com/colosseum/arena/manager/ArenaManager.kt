@@ -2,9 +2,9 @@ package com.colosseum.arena.manager
 
 import com.colosseum.arena.NPCManager
 import com.colosseum.arena.TargetBlockListener
-import com.colosseum.arena.builders.DetailedArena
-import com.colosseum.arena.builders.QueuedBlockPlacer
-import com.colosseum.arena.builders.SimpleArena
+import com.colosseum.arena.builder.DetailedArena
+import com.colosseum.arena.builder.QueuedBlockPlacer
+import com.colosseum.arena.builder.SimpleArena
 import com.colosseum.arena.config.TargetBlockConfig
 import com.colosseum.arena.domain.ArenaConfig
 import com.colosseum.arena.domain.ArenaType

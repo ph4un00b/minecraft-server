@@ -1,4 +1,4 @@
-package com.colosseum.arena.builders
+package com.colosseum.arena.builder
 
 import com.colosseum.arena.domain.ArenaConfig
 import org.bukkit.World
