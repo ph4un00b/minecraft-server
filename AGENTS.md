@@ -49,6 +49,9 @@ This is a Kotlin-based Minecraft PaperMC plugin that auto-generates gothic colos
 
 # Run tests in specific package
 ./gradlew test --tests "com.colosseum.arena.*"
+./gradlew test --tests "com.colosseum.npc.*"
+./gradlew test --tests "com.colosseum.combat.*"
+./gradlew test --tests "com.colosseum.commands.*"
 ```
 
 ## Code Formatting

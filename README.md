@@ -140,52 +140,60 @@ root/
 ├── plugins/                    # Compiled plugin JAR
 └── src/                        # Source code
     ├── main/kotlin/com/colosseum/
-    │   ├── arena/
-    │   │   ├── ArenaPlugin.kt          # Main plugin class
-    │   │   ├── NPCManager.kt           # NPC management
-    │   │   ├── NPCConfig.kt            # NPC configuration
-    │   │   ├── NPCEvents.kt            # NPC event handlers
-    │   │   ├── builders/               # Arena builders
+    │   ├── arena/                    # Arena feature (facade pattern)
+    │   │   ├── ArenaPlugin.kt        # Main plugin class
+    │   │   ├── ArenaManager.kt       # Arena facade (root level)
+    │   │   ├── builder/              # Arena builders
     │   │   │   ├── ArenaBuilder.kt
-    │   │   │   ├── SimpleArena.kt
-    │   │   │   ├── DetailedArena.kt
     │   │   │   ├── BlockPlacer.kt
-    │   │   │   └── QueuedBlockPlacer.kt
-    │   │   ├── commands/               # All commands
-    │   │   │   ├── ArenaCommand.kt     # Command enum
-    │   │   │   ├── BuildCommands.kt
-    │   │   │   ├── PlayerCommands.kt
-    │   │   │   ├── NPCCommands.kt
-    │   │   │   ├── InfoCommands.kt
-    │   │   │   ├── CommandLogger.kt
-    │   │   │   ├── CommandDisplay.kt
-    │   │   │   └── CommandSuggestion.kt
-    │   │   ├── combat/                 # Combat system
-    │   │   │   ├── CombatKit.kt
-    │   │   │   ├── KitConfig.kt
-    │   │   │   └── ArrowTracker.kt
-    │   │   ├── domain/                 # Domain models
+    │   │   │   ├── DetailedArena.kt
+    │   │   │   └── SimpleArena.kt
+    │   │   ├── domain/               # Domain models
     │   │   │   ├── ArenaConfig.kt
     │   │   │   ├── ArenaType.kt
-    │   │   │   ├── NPCAttackType.kt
-    │   │   │   ├── SpawnPoint.kt
-    │   │   │   └── SpawnPosition.kt
-    │   │   ├── manager/                # Arena manager (facade)
-    │   │   │   └── ArenaManager.kt
-    │   │   └── operations/             # Operations
+    │   │   │   └── SpawnPoint.kt
+    │   │   └── operations/           # Arena operations
     │   │       ├── ArenaClearer.kt
-    │   │       ├── PlayerSpawner.kt
     │   │       └── YLevelChanger.kt
-    │   └── core/storage/
-    │       └── PropertiesStorage.kt    # Config storage
+    │   ├── combat/                   # Combat feature
+    │   │   ├── arrow/                # Arrow tracking
+    │   │   │   └── ArrowTracker.kt
+    │   │   ├── kit/                  # Combat kits
+    │   │   │   ├── CombatKit.kt
+    │   │   │   └── KitConfig.kt
+    │   │   └── spawn/                # Player spawning
+    │   │       └── PlayerSpawner.kt
+    │   ├── commands/                 # Command system
+    │   │   ├── handler/              # Command handlers
+    │   │   │   ├── BuildCommands.kt
+    │   │   │   ├── InfoCommands.kt
+    │   │   │   ├── NPCCommands.kt
+    │   │   │   └── PlayerCommands.kt
+    │   │   └── infrastructure/       # Command infrastructure
+    │   │       ├── ArenaCommand.kt
+    │   │       ├── CommandDisplay.kt
+    │   │       ├── CommandLogger.kt
+    │   │       └── CommandSuggestion.kt
+    │   ├── core/storage/             # Storage layer
+    │   │   └── PropertiesStorage.kt
+    │   ├── npc/                      # NPC feature (facade pattern)
+    │   │   ├── NPCManager.kt         # NPC facade (root level)
+    │   │   ├── NPCEvents.kt          # NPC event handlers
+    │   │   ├── NPCAttackType.kt      # NPC attack types
+    │   │   ├── NPCConfig.kt          # NPC configuration
+    │   │   └── NPCDecisions.kt       # NPC AI decisions
+    │   └── target/                   # Target block feature
+    │       ├── TargetBlockListener.kt
+    │       └── config/
+    │           └── TargetBlockConfig.kt
     ├── main/resources/
-    │   ├── plugin.yml                  # Plugin configuration
-    │   └── version.properties          # Build version info
-    └── test/kotlin/                    # Unit tests
+    │   ├── plugin.yml                # Plugin configuration
+    │   └── version.properties        # Build version info
+    └── test/kotlin/                  # Unit tests
         └── com/colosseum/arena/commands/
+            ├── CommandCategoriesTest.kt
             ├── CommandDisplayTest.kt
-            ├── CommandSuggestionTest.kt
-            └── CommandCategoriesTest.kt
+            └── CommandSuggestionTest.kt
 ```
 
 ## Gradle Tasks
@@ -472,11 +480,13 @@ Tests are located in `src/test/kotlin/` following the package structure.
 
 To extend the plugin:
 
-1. Edit source files in `src/main/kotlin/com/colosseum/arena/`
-2. Add commands in `ArenaCommand.kt` enum
-3. Implement in appropriate command handler
-4. Rebuild: `./gradlew jar`
-5. Copy new JAR: `cp build/libs/*.jar server/plugins/`
+1. Arena feature: Edit files in `src/main/kotlin/com/colosseum/arena/`
+2. NPC feature: Edit files in `src/main/kotlin/com/colosseum/npc/`
+3. Combat feature: Edit files in `src/main/kotlin/com/colosseum/combat/`
+4. Commands: Add to `ArenaCommand.kt` enum in `commands/infrastructure/`
+5. Implement handlers in `commands/handler/`
+6. Rebuild: `./gradlew jar`
+7. Copy new JAR: `cp build/libs/*.jar server/plugins/`
 
 ## Architecture
 
@@ -489,26 +499,26 @@ To extend the plugin:
 
 ### Key Components
 
-**ArenaManager** (`manager/ArenaManager.kt`)
+**ArenaManager** (`arena/ArenaManager.kt`)
 - Facade for all arena operations
 - Delegates spawn logic to PlayerSpawner
 - Supports sync and async building
 - Manages PDC (Persistent Data Container) state
 
-**NPCManager** (`NPCManager.kt`)
+**NPCManager** (`npc/NPCManager.kt`)
+- Facade for NPC operations
 - Manages Sentinel NPCs for combat
 - Configurable health, damage, count, attack type
 - Integrates with Citizens API
 
-**ArrowTracker** (`combat/ArrowTracker.kt`)
+**ArrowTracker** (`combat/arrow/ArrowTracker.kt`)
 - Converts shot arrows to persistent items
 - Enforces 5 arrows per player limit
 - Items have unlimited lifetime
 
 **Command System** (`commands/`)
-- Enum-based command definitions with aliases
-- Categorized handlers (Build, Player, NPC, Info)
-- Command logging for audit trail
+- Infrastructure: Enum-based definitions, logging, display
+- Handlers: Categorized by feature (Build, Player, NPC, Info)
 - Tab completion support
 
 ## JVM Flags Explanation
