@@ -200,6 +200,9 @@ root/
 # Download required plugins (Citizens, Sentinel)
 ./gradlew downloadPlugins
 
+# Force re-download plugins (deletes existing and downloads fresh)
+./gradlew downloadPlugins -PforceDownload
+
 # Build plugin only
 ./gradlew jar
 
@@ -344,6 +347,22 @@ nano server/phau.properties  # Change arena-type or arena-base-y
 2. Sentinel from https://wiki.citizensnpcs.co/Sentinel
 
 Place JARs in `server/plugins/` and restart.
+
+Or use the Gradle task (skips if already exists):
+```bash
+./gradlew downloadPlugins
+```
+
+### Updating Plugin Versions
+
+**Symptom**: Need to update Citizens/Sentinel to newer builds
+
+**Solution**: Force re-download with:
+```bash
+./gradlew downloadPlugins -PforceDownload
+```
+
+This deletes existing plugins and downloads fresh copies.
 
 ### Paper Download Failure
 
