@@ -58,7 +58,7 @@ class NPCManager(
         targetBlockListener = listener
     }
 
-    fun spawnArenaNPCs(world: World, baseY: Int) {
+    fun spawnArenaNPCs(world: World, baseY: Int, targetPlayer: Player) {
         val logMsg = "$YELLOW[ArenaPlugin] Spawning with random types$RESET"
         plugin.logger.info(logMsg)
         if (!npcEnabled) {
@@ -96,7 +96,7 @@ class NPCManager(
         lastSpawnWorld = world
         lastSpawnBaseY = baseY
         currentBatchSize = npcCount
-        isHostile = false // Reset hostility on new spawn
+        isHostile = true // NPCs spawn already hostile
 
         val attackTypes = NPCDecisions.selectRandomTypesForBatch(npcCount)
 
@@ -120,6 +120,7 @@ class NPCManager(
                         location,
                         index,
                         attackType,
+                        targetPlayer,
                     )
                     if (npc != null) {
                         trackedNPCs[npc.id] = position to attackType
@@ -165,6 +166,7 @@ class NPCManager(
         location: Location,
         index: Int,
         attackType: NPCAttackType,
+        targetPlayer: Player,
     ): NPC? {
         val npcName = "$NPC_NAME_PREFIX$index"
 
@@ -195,7 +197,7 @@ class NPCManager(
             return null
         }
 
-        configureSentinelNPC(sentinel)
+        configureSentinelNPC(sentinel, targetPlayer)
 
         equipNPCWithWeapon(npc, attackType)
 
@@ -268,12 +270,15 @@ class NPCManager(
         }
     }
 
-    private fun configureSentinelNPC(sentinel: SentinelTrait) {
+    private fun configureSentinelNPC(
+        sentinel: SentinelTrait,
+        targetPlayer: Player,
+    ) {
         sentinel.health = npcHealth
         sentinel.damage = npcDamage
 
-        // Don't add targets initially - NPCs start passive
-        // Targets will be added when target block is hit
+        // Add player as target immediately - NPCs spawn hostile
+        sentinel.addTarget("PLAYER:${targetPlayer.name}")
 
         // Set to melee combat
         sentinel.attackRate = 10
@@ -333,13 +338,12 @@ class NPCManager(
                 currentBatchSize = nextBatchSize
                 npcCount = currentBatchSize
                 isHostile = false // Reset hostility for new batch
-                targetBlockListener?.reset() // Reset target block
                 plugin.logger.info(
                     "$YELLOW[ArenaPlugin] All NPCs dead. " +
-                        "Spawning next batch: $currentBatchSize NPCs$RESET",
+                        "Next batch will be: $currentBatchSize NPCs$RESET",
                 )
-                val world = entity.world
-                spawnArenaNPCs(world, lastSpawnBaseY)
+                // Recreate target block after delay so player can spawn next batch
+                targetBlockListener?.recreateTargetAfterDelay()
             }
         }
     }

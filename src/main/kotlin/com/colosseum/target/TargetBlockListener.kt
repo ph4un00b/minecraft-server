@@ -4,6 +4,7 @@ import com.colosseum.npc.NPCManager
 import com.colosseum.target.config.TargetBlockConfig
 import org.bukkit.Bukkit
 import org.bukkit.Location
+import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.entity.Arrow
 import org.bukkit.entity.Player
@@ -22,11 +23,13 @@ class TargetBlockListener(
         private const val YELLOW = "\u001B[33m"
         private const val RESET = "\u001B[0m"
         private const val GREEN = "\u001B[32m"
+        private const val DELAY_SECONDS = 5L
     }
 
     private var targetActivated = false
     private var lastSpawnWorld: World? = null
     private var lastSpawnBaseY: Int = 0
+    private var activatingPlayer: Player? = null
 
     init {
         Bukkit.getPluginManager().registerEvents(this, plugin)
@@ -36,15 +39,51 @@ class TargetBlockListener(
         lastSpawnWorld = world
         lastSpawnBaseY = baseY
         targetActivated = false
+        activatingPlayer = null
     }
 
     fun reset() {
         targetActivated = false
-        val msg = "Target block reset - NPCs are now passive"
+        activatingPlayer = null
+        val msg = "Target block reset - ready for next batch"
         plugin.logger.info("$YELLOW[ArenaPlugin] $msg$RESET")
     }
 
     fun isActivated(): Boolean = targetActivated
+
+    /**
+     * Recreate the target block after a delay
+     * Called when all NPCs in a batch are killed
+     */
+    fun recreateTargetAfterDelay() {
+        val world = lastSpawnWorld ?: return
+        val baseY = lastSpawnBaseY
+
+        plugin.logger.info(
+            "$YELLOW[ArenaPlugin] Recreating target block in " +
+                "$DELAY_SECONDS seconds...$RESET",
+        )
+
+        object : BukkitRunnable() {
+            override fun run() {
+                val targetLocation = Location(
+                    world,
+                    config.centerX.toDouble(),
+                    (baseY + config.offsetY).toDouble(),
+                    config.centerZ.toDouble(),
+                )
+                targetLocation.block.type = config.material
+
+                // Reset the activated flag so it can be hit again
+                reset()
+
+                plugin.logger.info(
+                    "$GREEN[ArenaPlugin] Target block recreated! " +
+                        "Hit it to spawn next batch.$RESET",
+                )
+            }
+        }.runTaskLater(plugin, DELAY_SECONDS * 20L) // 20 ticks = 1 second
+    }
 
     @EventHandler
     fun onProjectileHit(event: ProjectileHitEvent) {
@@ -70,6 +109,7 @@ class TargetBlockListener(
 
         // Activate the target
         targetActivated = true
+        activatingPlayer = shooter
 
         plugin.logger.info(
             "$GREEN[ArenaPlugin] Target hit by ${shooter.name}! " +
@@ -79,8 +119,11 @@ class TargetBlockListener(
         // Play sound and effects
         playActivationEffects(hitBlock.location)
 
-        // Make NPCs hostile
-        npcManager.activateHostility(shooter)
+        // Destroy the target block
+        hitBlock.type = Material.AIR
+
+        // Spawn NPCs for this batch
+        npcManager.spawnArenaNPCs(world, lastSpawnBaseY, shooter)
 
         // Remove the arrow
         projectile.remove()

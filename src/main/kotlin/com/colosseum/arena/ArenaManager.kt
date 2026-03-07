@@ -117,11 +117,8 @@ class ArenaManager(private val plugin: JavaPlugin) {
         // Build spawn markers (delegated to PlayerSpawner)
         buildSpawnMarkers(world)
 
-        // Set up target block listener
+        // Set up target block listener - NPCs spawn when player hits target
         targetBlockListener.setWorldInfo(world, storage.arenaBaseY)
-
-        // Spawn NPCs after arena build
-        npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
 
         // Mark as built in PDC
         pdc.set(arenaBuiltKey, PersistentDataType.INTEGER, 1)
@@ -149,11 +146,8 @@ class ArenaManager(private val plugin: JavaPlugin) {
         // Build spawn markers (delegated to PlayerSpawner)
         buildSpawnMarkers(world)
 
-        // Set up target block listener
+        // Set up target block listener - NPCs spawn when player hits target
         targetBlockListener.setWorldInfo(world, storage.arenaBaseY)
-
-        // Spawn NPCs after arena build
-        npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
 
         // Reset spawn rotation for fresh start
         resetSpawnRotation()
@@ -216,10 +210,9 @@ class ArenaManager(private val plugin: JavaPlugin) {
                     // Build complete
                     isBuilding = false
 
-                    // Build spawn markers and spawn NPCs
+                    // Build spawn markers - NPCs spawn when player hits target
                     buildSpawnMarkers(world)
                     targetBlockListener.setWorldInfo(world, storage.arenaBaseY)
-                    npcManager.spawnArenaNPCs(world, storage.arenaBaseY)
                     resetSpawnRotation()
 
                     // Update PDC
