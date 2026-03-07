@@ -1,7 +1,7 @@
 package com.colosseum.arena.operations
 
-import com.colosseum.arena.NPCManager
 import com.colosseum.core.storage.PropertiesStorage
+import com.colosseum.npc.NPCManager
 import org.bukkit.World
 
 /**

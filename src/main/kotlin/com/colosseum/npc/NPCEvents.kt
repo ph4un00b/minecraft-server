@@ -1,4 +1,4 @@
-package com.colosseum.arena
+package com.colosseum.npc
 
 import org.bukkit.entity.Villager
 import org.bukkit.event.EventHandler

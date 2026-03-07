@@ -1,6 +1,5 @@
 package com.colosseum.arena.manager
 
-import com.colosseum.arena.NPCManager
 import com.colosseum.arena.TargetBlockListener
 import com.colosseum.arena.builder.DetailedArena
 import com.colosseum.arena.builder.QueuedBlockPlacer
@@ -15,6 +14,7 @@ import com.colosseum.combat.kit.CombatKit
 import com.colosseum.combat.kit.KitConfig
 import com.colosseum.combat.spawn.PlayerSpawner
 import com.colosseum.core.storage.PropertiesStorage
+import com.colosseum.npc.NPCManager
 import org.bukkit.Location
 import org.bukkit.NamespacedKey
 import org.bukkit.World
