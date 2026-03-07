@@ -12,6 +12,7 @@ import net.citizensnpcs.api.trait.trait.Inventory
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
+import org.bukkit.Sound
 import org.bukkit.World
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.Player
@@ -334,6 +335,13 @@ class NPCManager(
                 plugin.logger.info(
                     "$YELLOW[ArenaPlugin] All NPCs dead. " +
                         "Next batch will be: $currentBatchSize NPCs$RESET",
+                )
+                // Play victory sound for completing the batch
+                entity.world.playSound(
+                    entity.location,
+                    Sound.ENTITY_PLAYER_LEVELUP,
+                    1.0f,
+                    1.0f,
                 )
                 // Recreate target block after delay so player can spawn next batch
                 targetBlockListener?.recreateTargetAfterDelay()
