@@ -28,7 +28,7 @@ class NPCManager(
 ) : Listener {
     companion object {
         private const val NPC_RADIUS = 6
-        private const val DEFAULT_HEALTH = 20.0
+        private const val DEFAULT_HEALTH = 1.0
         private const val DEFAULT_DAMAGE = 5.0
         private const val MAX_NPCS = 4
         private const val NPC_NAME_PREFIX = "ArenaGladiator_"

@@ -107,8 +107,10 @@ class ArenaPlugin : JavaPlugin(), Listener {
                 )
             } else {
                 logger.info(
-                    "${prefix}Arena already built. Skipping generation.",
+                    "${prefix}Arena already built. Spawning NPCs...",
                 )
+                // Spawn NPCs even if arena was already built
+                mgr.npcManager.spawnArenaNPCs(world, mgr.getCurrentBaseY())
             }
         } ?: run {
             logger.severe("${prefix}Manager not initialized! Plugin disabled.")
