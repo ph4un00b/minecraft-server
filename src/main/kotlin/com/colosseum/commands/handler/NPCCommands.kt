@@ -201,9 +201,15 @@ class NPCCommands(
             return
         }
         val newCount = args[1].toIntOrNull()
-        if (newCount == null || newCount < 0 || newCount > 4) {
+        val minCount = npcManager?.getNPCMinCount() ?: 0
+        val maxCount = npcManager?.getNPCMaxCount() ?: 4
+        if (newCount == null ||
+            newCount < minCount ||
+            newCount > maxCount
+        ) {
             sender.sendMessage(
-                "${ArenaCommand.PREFIX}Error: Count must be between 0 and 4",
+                "${ArenaCommand.PREFIX}Error: Count must be between " +
+                    "$minCount and $maxCount",
             )
             commandLogger.logCommand(
                 sender,

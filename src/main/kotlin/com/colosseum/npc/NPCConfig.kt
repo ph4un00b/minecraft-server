@@ -1,8 +1,19 @@
 package com.colosseum.npc
 
-data class NPCConfig(
-    var health: Double = 20.0,
-    var damage: Double = 5.0,
-    var count: Int = 1,
-    var enabled: Boolean = true,
-)
+/**
+ * NPC configuration constants
+ * Central source of truth for all NPC-related constants
+ */
+object NPCConfig {
+    // Default values
+    const val DEFAULT_HEALTH = 1.0
+    const val DEFAULT_DAMAGE = 5.0
+    const val DEFAULT_COUNT = 1
+    const val DEFAULT_ENABLED = true
+
+    // Limits
+    const val MIN_HEALTH = 1.0
+    const val MIN_DAMAGE = 1.0
+    const val MAX_COUNT = 4
+    const val MIN_COUNT = 0
+}

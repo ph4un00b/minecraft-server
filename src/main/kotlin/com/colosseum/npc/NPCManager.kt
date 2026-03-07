@@ -30,8 +30,6 @@ class NPCManager(
 ) : Listener {
     companion object {
         private const val NPC_RADIUS = 6
-        private const val DEFAULT_HEALTH = 1.0
-        private const val DEFAULT_DAMAGE = 5.0
         private const val NPC_NAME_PREFIX = "ArenaGladiator_"
         private const val YELLOW = "\u001B[33m"
         private const val RESET = "\u001B[0m"
@@ -40,9 +38,9 @@ class NPCManager(
 
     private val trackedNPCs =
         ConcurrentHashMap<Int, Pair<SpawnPosition, NPCAttackType>>()
-    private var npcHealth = DEFAULT_HEALTH
-    private var npcDamage = DEFAULT_DAMAGE
-    private var npcEnabled = true
+    private var npcHealth = NPCConfig.DEFAULT_HEALTH
+    private var npcDamage = NPCConfig.DEFAULT_DAMAGE
+    private var npcEnabled = NPCConfig.DEFAULT_ENABLED
     private var npcAttackType = NPCAttackType.SWORD
     private var currentBatchSize = batchConfig.startingBatchSize
     private var lastSpawnWorld: World? = null
@@ -370,21 +368,22 @@ class NPCManager(
     }
 
     fun setNPCHealth(health: Double) {
-        npcHealth = health.coerceAtLeast(1.0)
+        npcHealth = health.coerceAtLeast(NPCConfig.MIN_HEALTH)
         plugin.logger.info(
             "$YELLOW[ArenaPlugin] NPC health set to $npcHealth$RESET",
         )
     }
 
     fun setNPCDamage(damage: Double) {
-        npcDamage = damage.coerceAtLeast(1.0)
+        npcDamage = damage.coerceAtLeast(NPCConfig.MIN_DAMAGE)
         plugin.logger.info(
             "$YELLOW[ArenaPlugin] NPC damage set to $npcDamage$RESET",
         )
     }
 
     fun setNPCCount(count: Int) {
-        currentBatchSize = count.coerceIn(0, batchConfig.maxBatchSize)
+        currentBatchSize =
+            count.coerceIn(NPCConfig.MIN_COUNT, NPCConfig.MAX_COUNT)
         plugin.logger.info(
             "$YELLOW[ArenaPlugin] NPC count set to $currentBatchSize$RESET",
         )
@@ -399,6 +398,14 @@ class NPCManager(
     fun isNPCEnabled(): Boolean = npcEnabled
 
     fun getNPCAttackType(): NPCAttackType = npcAttackType
+
+    fun getNPCMinHealth(): Double = NPCConfig.MIN_HEALTH
+
+    fun getNPCMinDamage(): Double = NPCConfig.MIN_DAMAGE
+
+    fun getNPCMinCount(): Int = NPCConfig.MIN_COUNT
+
+    fun getNPCMaxCount(): Int = NPCConfig.MAX_COUNT
 
     fun setNPCAttackType(attackType: NPCAttackType) {
         val oldType = npcAttackType

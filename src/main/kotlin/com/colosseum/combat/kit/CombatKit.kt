@@ -27,7 +27,7 @@ import org.bukkit.inventory.meta.Damageable
  * - Player Inventory: https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/inventory/PlayerInventory.html
  *   - Clearing inventory, adding items, setting main hand
  */
-class CombatKit(private val config: KitConfig) {
+class CombatKit {
     /**
      * Equip player with fresh combat kit
      * Clears inventory, gives enchanted bow + 5 arrows
@@ -41,7 +41,7 @@ class CombatKit(private val config: KitConfig) {
         // Create enchanted bow
         val bow = ItemStack(Material.BOW)
         val bowMeta = bow.itemMeta
-        config.bowEnchantments.forEach { (enchantment, level) ->
+        KitConfig.defaultBowEnchantments.forEach { (enchantment, level) ->
             bowMeta.addEnchant(enchantment, level, true)
         }
         bow.itemMeta = bowMeta
@@ -50,7 +50,7 @@ class CombatKit(private val config: KitConfig) {
         inventory.setItemInMainHand(bow)
 
         // Give initial arrows
-        inventory.addItem(ItemStack(Material.ARROW, config.initialArrows))
+        inventory.addItem(ItemStack(Material.ARROW, KitConfig.INITIAL_ARROWS))
     }
 
     /**
@@ -83,8 +83,10 @@ class CombatKit(private val config: KitConfig) {
 
         // Add arrows (capped at max)
         val currentArrows = getArrowCount(player)
-        val arrowsToAdd =
-            minOf(config.restockAmount, config.maxArrows - currentArrows)
+        val arrowsToAdd = minOf(
+            KitConfig.RESTOCK_AMOUNT,
+            KitConfig.MAX_ARROWS - currentArrows,
+        )
 
         if (arrowsToAdd > 0) {
             inventory.addItem(ItemStack(Material.ARROW, arrowsToAdd))
@@ -116,12 +118,12 @@ class CombatKit(private val config: KitConfig) {
      * Get configuration summary for display
      */
     fun getConfigSummary(): String {
-        val enchants = config.bowEnchantments.map {
+        val enchants = KitConfig.defaultBowEnchantments.map {
             "${it.key.key.key}:${it.value}"
         }.joinToString(",")
-        val initial = config.initialArrows
-        val restock = config.restockAmount
-        val max = config.maxArrows
+        val initial = KitConfig.INITIAL_ARROWS
+        val restock = KitConfig.RESTOCK_AMOUNT
+        val max = KitConfig.MAX_ARROWS
         return "bow=$enchants, initial=$initial, restock=$restock, max=$max"
     }
 }

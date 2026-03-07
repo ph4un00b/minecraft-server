@@ -9,7 +9,6 @@ import com.colosseum.arena.operations.ArenaClearer
 import com.colosseum.arena.operations.YLevelChanger
 import com.colosseum.combat.arrow.ArrowTracker
 import com.colosseum.combat.kit.CombatKit
-import com.colosseum.combat.kit.KitConfig
 import com.colosseum.combat.spawn.PlayerSpawner
 import com.colosseum.core.storage.PropertiesStorage
 import com.colosseum.npc.NPCManager
@@ -44,7 +43,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
     private val detailedArena by lazy { DetailedArena() }
     private val clearer by lazy { ArenaClearer() }
     private val playerSpawner by lazy { PlayerSpawner() }
-    private val combatKit by lazy { CombatKit(KitConfig()) }
+    private val combatKit by lazy { CombatKit() }
     val arrowTracker by lazy { ArrowTracker(plugin) }
     val npcManager by lazy { NPCManager(plugin, playerSpawner) }
     val targetBlockConfig = TargetBlockConfig()
