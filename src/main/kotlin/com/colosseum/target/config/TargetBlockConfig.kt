@@ -17,7 +17,7 @@ data class TargetBlockConfig(
     val particleCount: Int = 10,
     val particleSpread: Double = 0.5,
     val particleSpeed: Double = 0.1,
-    val soundEffect: Sound = Sound.BLOCK_NOTE_BLOCK_PLING,
+    val soundEffect: Sound = Sound.ENTITY_ENDER_DRAGON_GROWL,
     val soundVolume: Float = 1.0f,
     val soundPitch: Float = 1.5f,
     val activationMessage: String = "Target hit! NPCs are now HOSTILE!",
