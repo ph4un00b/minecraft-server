@@ -8,7 +8,6 @@ import com.colosseum.arena.commands.CommandSuggestion
 import com.colosseum.arena.commands.InfoCommands
 import com.colosseum.arena.commands.NPCCommands
 import com.colosseum.arena.commands.PlayerCommands
-import com.colosseum.arena.manager.ArenaManager
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender

@@ -1,6 +1,6 @@
 package com.colosseum.arena.commands
 
-import com.colosseum.arena.manager.ArenaManager
+import com.colosseum.arena.ArenaManager
 import org.bukkit.Bukkit
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player

@@ -1,7 +1,7 @@
 package com.colosseum.arena.commands
 
+import com.colosseum.arena.ArenaManager
 import com.colosseum.arena.domain.ArenaType
-import com.colosseum.arena.manager.ArenaManager
 import org.bukkit.World
 import org.bukkit.command.CommandSender
 import org.bukkit.plugin.java.JavaPlugin

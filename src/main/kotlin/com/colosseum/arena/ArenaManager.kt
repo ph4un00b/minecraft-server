@@ -1,4 +1,4 @@
-package com.colosseum.arena.manager
+package com.colosseum.arena
 
 import com.colosseum.arena.builder.DetailedArena
 import com.colosseum.arena.builder.QueuedBlockPlacer
