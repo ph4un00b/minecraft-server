@@ -1,4 +1,4 @@
-package com.colosseum.arena.domain
+package com.colosseum.npc
 
 /**
  * Enumeration of available NPC attack types with spawn probability

@@ -1,4 +1,4 @@
-package com.colosseum.arena.domain
+package com.colosseum.npc
 
 import kotlin.random.Random
 

@@ -1,4 +1,4 @@
-package com.colosseum.arena
+package com.colosseum.npc
 
 data class NPCConfig(
     var health: Double = 20.0,

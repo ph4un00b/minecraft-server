@@ -1,7 +1,7 @@
 package com.colosseum.arena
 
-import com.colosseum.arena.domain.NPCAttackType
-import com.colosseum.arena.domain.NPCDecisions
+import com.colosseum.npc.NPCAttackType
+import com.colosseum.npc.NPCDecisions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

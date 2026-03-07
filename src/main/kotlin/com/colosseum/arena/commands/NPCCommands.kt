@@ -1,7 +1,7 @@
 package com.colosseum.arena.commands
 
 import com.colosseum.arena.NPCManager
-import com.colosseum.arena.domain.NPCAttackType
+import com.colosseum.npc.NPCAttackType
 import org.bukkit.command.CommandSender
 
 /**
