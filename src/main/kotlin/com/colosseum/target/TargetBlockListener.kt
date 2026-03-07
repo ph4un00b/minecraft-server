@@ -1,7 +1,7 @@
-package com.colosseum.arena
+package com.colosseum.target
 
-import com.colosseum.arena.config.TargetBlockConfig
 import com.colosseum.npc.NPCManager
+import com.colosseum.target.config.TargetBlockConfig
 import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.World

@@ -1,6 +1,6 @@
 package com.colosseum.arena.domain
 
-import com.colosseum.arena.config.TargetBlockConfig
+import com.colosseum.target.config.TargetBlockConfig
 
 /**
  * Immutable arena configuration

@@ -1,4 +1,4 @@
-package com.colosseum.arena.config
+package com.colosseum.target.config
 
 import org.bukkit.Material
 import org.bukkit.Particle

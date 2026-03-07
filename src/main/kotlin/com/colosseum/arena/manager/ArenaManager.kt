@@ -1,10 +1,8 @@
 package com.colosseum.arena.manager
 
-import com.colosseum.arena.TargetBlockListener
 import com.colosseum.arena.builder.DetailedArena
 import com.colosseum.arena.builder.QueuedBlockPlacer
 import com.colosseum.arena.builder.SimpleArena
-import com.colosseum.arena.config.TargetBlockConfig
 import com.colosseum.arena.domain.ArenaConfig
 import com.colosseum.arena.domain.ArenaType
 import com.colosseum.arena.operations.ArenaClearer
@@ -15,6 +13,8 @@ import com.colosseum.combat.kit.KitConfig
 import com.colosseum.combat.spawn.PlayerSpawner
 import com.colosseum.core.storage.PropertiesStorage
 import com.colosseum.npc.NPCManager
+import com.colosseum.target.TargetBlockListener
+import com.colosseum.target.config.TargetBlockConfig
 import org.bukkit.Location
 import org.bukkit.NamespacedKey
 import org.bukkit.World
