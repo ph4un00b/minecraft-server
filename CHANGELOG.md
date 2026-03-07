@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Major Refactoring**: Restructured entire codebase with feature-based package organization
+  - Moved combat files to `com.colosseum.combat.*` (kit, arrow, spawn)
+  - Moved NPC files to `com.colosseum.npc.*` (manager, config, decisions, attack types)
+  - Moved command files to `com.colosseum.commands.*` (handler and infrastructure)
+  - Moved target block files to `com.colosseum.target.*`
+  - Moved ArenaManager to `com.colosseum.arena` (root level as facade)
+  - Renamed `builders/` to `builder/` (singular)
+- Restructured test files to mirror new package layout
+  - Tests now in matching packages: `npc/`, `commands/`
+  - Moved test resources to `src/test/resources/`
+- Updated all documentation (README.md, AGENTS.md) with new structure
+
+### Fixed
+- Import ordering across all files (ktlint compliance)
+- Test resource path in CommandDisplayTest
+
 ## [1.2.0] - 2026-03-01
 
 ### Added

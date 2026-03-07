@@ -1,4 +1,4 @@
-package com.colosseum.arena.commands
+package com.colosseum.commands
 
 import com.colosseum.commands.infrastructure.CommandDisplay
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -76,7 +76,7 @@ class CommandDisplayTest {
         display.displayAllCommands()
 
         // Read reference file
-        val testDir = "src/test/kotlin/com/colosseum/arena/commands/"
+        val testDir = "src/test/resources/"
         val refFile = java.io.File("${testDir}expected_commands_display.txt")
         val referenceLines = refFile.readLines()
 

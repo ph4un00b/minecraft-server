@@ -1,4 +1,4 @@
-package com.colosseum.arena.commands
+package com.colosseum.commands
 
 import com.colosseum.commands.infrastructure.CommandSuggestion
 import org.junit.jupiter.api.Assertions.assertEquals
