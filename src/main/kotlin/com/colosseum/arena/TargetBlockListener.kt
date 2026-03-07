@@ -1,9 +1,8 @@
 package com.colosseum.arena
 
+import com.colosseum.arena.config.TargetBlockConfig
 import org.bukkit.Bukkit
 import org.bukkit.Location
-import org.bukkit.Material
-import org.bukkit.Sound
 import org.bukkit.World
 import org.bukkit.entity.Arrow
 import org.bukkit.entity.Player
@@ -16,10 +15,9 @@ import org.bukkit.scheduler.BukkitRunnable
 class TargetBlockListener(
     private val plugin: JavaPlugin,
     private val npcManager: NPCManager,
+    private val config: TargetBlockConfig = TargetBlockConfig(),
 ) : Listener {
     companion object {
-        private const val TARGET_X = 0
-        private const val TARGET_Z = 0
         private const val YELLOW = "\u001B[33m"
         private const val RESET = "\u001B[0m"
         private const val GREEN = "\u001B[32m"
@@ -41,8 +39,8 @@ class TargetBlockListener(
 
     fun reset() {
         targetActivated = false
-        val msg = "[ArenaPlugin] Target block reset - NPCs are now passive"
-        plugin.logger.info("$YELLOW$msg$RESET")
+        val msg = "Target block reset - NPCs are now passive"
+        plugin.logger.info("$YELLOW[ArenaPlugin] $msg$RESET")
     }
 
     fun isActivated(): Boolean = targetActivated
@@ -52,14 +50,14 @@ class TargetBlockListener(
         val projectile = event.entity
         val hitBlock = event.hitBlock ?: return
 
-        // Only handle arrows hitting target blocks
+        // Only handle arrows hitting configured target material
         if (projectile !is Arrow) return
-        if (hitBlock.type != Material.TARGET) return
+        if (hitBlock.type != config.material) return
 
-        // Check if it's our arena target
+        // Check if it's our arena target at configured position
         val world = lastSpawnWorld ?: return
         if (hitBlock.world.name != world.name) return
-        if (hitBlock.x != TARGET_X || hitBlock.z != TARGET_Z) return
+        if (hitBlock.x != config.centerX || hitBlock.z != config.centerZ) return
 
         // Prevent multiple activations
         if (targetActivated) {
@@ -74,7 +72,7 @@ class TargetBlockListener(
 
         plugin.logger.info(
             "$GREEN[ArenaPlugin] Target hit by ${shooter.name}! " +
-                "NPCs are now HOSTILE!$RESET",
+                "${config.activationMessage}$RESET",
         )
 
         // Play sound and effects
@@ -90,35 +88,35 @@ class TargetBlockListener(
     private fun playActivationEffects(location: Location) {
         val world = location.world ?: return
 
-        // Play dragon growl sound
+        // Play configured sound
         world.playSound(
             location,
-            Sound.ENTITY_ENDER_DRAGON_GROWL,
-            1.0f,
-            1.0f,
+            config.soundEffect,
+            config.soundVolume,
+            config.soundPitch,
         )
 
-        // Spawn particles
+        // Spawn particles based on config
         object : BukkitRunnable() {
-            private var ticks = 0
+            private var ticks = 0L
             override fun run() {
-                if (ticks >= 20) {
+                if (ticks >= config.activationDuration) {
                     cancel()
                     return
                 }
 
                 world.spawnParticle(
-                    org.bukkit.Particle.FLAME,
+                    config.particleType,
                     location.clone().add(0.5, 0.5, 0.5),
-                    10,
-                    0.5,
-                    0.5,
-                    0.5,
-                    0.1,
+                    config.particleCount,
+                    config.particleSpread,
+                    config.particleSpread,
+                    config.particleSpread,
+                    config.particleSpeed,
                 )
 
-                ticks++
+                ticks += config.tickInterval
             }
-        }.runTaskTimer(plugin, 0L, 2L)
+        }.runTaskTimer(plugin, 0L, config.tickInterval)
     }
 }

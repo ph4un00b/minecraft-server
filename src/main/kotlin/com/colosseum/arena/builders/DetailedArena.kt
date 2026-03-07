@@ -35,7 +35,63 @@ class DetailedArena : ArenaBuilder {
         buildWindows(world, groundY, placer)
         buildGate(world, groundY, placer)
         buildCrenellations(world, wallTop, placer)
-        buildFloorPattern(world, groundY, placer)
+        buildFloorPattern(world, groundY, placer, config)
+    }
+
+    private fun buildFloorPattern(
+        world: World,
+        groundY: Int,
+        placer: BlockPlacer,
+        config: ArenaConfig,
+    ) {
+        // Create a decorative floor pattern in the arena
+        val radius = innerRadius.toInt()
+        for (x in -radius..radius) {
+            for (z in -radius..radius) {
+                val distance = sqrt((x * x + z * z).toDouble())
+                if (distance <= radius) {
+                    // Concentric circles pattern
+                    val patternRadius = distance.toInt()
+                    val material =
+                        when {
+                            patternRadius % 4 == 0 -> Material.POLISHED_ANDESITE
+                            patternRadius % 2 == 0 -> Material.SMOOTH_STONE
+                            (x + z) % 3 == 0 -> Material.MOSSY_STONE_BRICKS
+                            else -> Material.STONE_BRICKS
+                        }
+                    placer.setBlock(
+                        world,
+                        centerX + x,
+                        groundY,
+                        centerZ + z,
+                        material,
+                    )
+                }
+            }
+        }
+
+        // Center podium with target block
+        for (x in -2..2) {
+            for (z in -2..2) {
+                placer.setBlock(
+                    world,
+                    centerX + x,
+                    groundY + 1,
+                    centerZ + z,
+                    Material.CHISELED_STONE_BRICKS,
+                )
+            }
+        }
+
+        // Place target block at configured position
+        val targetConfig = config.targetBlockConfig
+        placer.setBlock(
+            world,
+            targetConfig.centerX,
+            groundY + targetConfig.offsetY,
+            targetConfig.centerZ,
+            targetConfig.material,
+        )
     }
 
     override fun buildSpawnMarkers(world: World, baseY: Int) {
@@ -310,52 +366,5 @@ class DetailedArena : ArenaBuilder {
                 )
             }
         }
-    }
-
-    private fun buildFloorPattern(
-        world: World,
-        groundY: Int,
-        placer: BlockPlacer,
-    ) {
-        // Create a decorative floor pattern in the arena
-        val radius = innerRadius.toInt()
-        for (x in -radius..radius) {
-            for (z in -radius..radius) {
-                val distance = sqrt((x * x + z * z).toDouble())
-                if (distance <= radius) {
-                    // Concentric circles pattern
-                    val patternRadius = distance.toInt()
-                    val material =
-                        when {
-                            patternRadius % 4 == 0 -> Material.POLISHED_ANDESITE
-                            patternRadius % 2 == 0 -> Material.SMOOTH_STONE
-                            (x + z) % 3 == 0 -> Material.MOSSY_STONE_BRICKS
-                            else -> Material.STONE_BRICKS
-                        }
-                    placer.setBlock(
-                        world,
-                        centerX + x,
-                        groundY,
-                        centerZ + z,
-                        material,
-                    )
-                }
-            }
-        }
-
-        // Center podium with target block
-        for (x in -2..2) {
-            for (z in -2..2) {
-                placer.setBlock(
-                    world,
-                    centerX + x,
-                    groundY + 1,
-                    centerZ + z,
-                    Material.CHISELED_STONE_BRICKS,
-                )
-            }
-        }
-        // Place target block at center - hitting it activates NPC hostility
-        placer.setBlock(world, centerX, groundY + 2, centerZ, Material.TARGET)
     }
 }

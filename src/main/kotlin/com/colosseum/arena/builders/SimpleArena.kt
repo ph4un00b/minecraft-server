@@ -100,13 +100,14 @@ class SimpleArena : ArenaBuilder {
             )
         }
 
-        // Place target block at center
+        // Place target block at center using config
+        val targetConfig = config.targetBlockConfig
         placer.setBlock(
             world,
-            centerX,
-            groundY + 1,
-            centerZ,
-            Material.TARGET,
+            targetConfig.centerX,
+            groundY + targetConfig.offsetY,
+            targetConfig.centerZ,
+            targetConfig.material,
         )
     }
 

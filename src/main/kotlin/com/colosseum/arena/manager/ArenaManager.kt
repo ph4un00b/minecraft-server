@@ -8,6 +8,7 @@ import com.colosseum.arena.builders.SimpleArena
 import com.colosseum.arena.combat.ArrowTracker
 import com.colosseum.arena.combat.CombatKit
 import com.colosseum.arena.combat.KitConfig
+import com.colosseum.arena.config.TargetBlockConfig
 import com.colosseum.arena.domain.ArenaConfig
 import com.colosseum.arena.domain.ArenaType
 import com.colosseum.arena.operations.ArenaClearer
@@ -46,8 +47,9 @@ class ArenaManager(private val plugin: JavaPlugin) {
     private val combatKit by lazy { CombatKit(KitConfig()) }
     val arrowTracker by lazy { ArrowTracker(plugin) }
     val npcManager by lazy { NPCManager(plugin, playerSpawner) }
+    val targetBlockConfig = TargetBlockConfig()
     val targetBlockListener by lazy {
-        TargetBlockListener(plugin, npcManager).also {
+        TargetBlockListener(plugin, npcManager, targetBlockConfig).also {
             npcManager.setTargetBlockListener(it)
         }
     }
@@ -194,7 +196,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
 
         // Queue all blocks for placement
         val placer = QueuedBlockPlacer()
-        val config = ArenaConfig(storage.arenaBaseY, type)
+        val config = ArenaConfig(storage.arenaBaseY, type, targetBlockConfig)
 
         when (type) {
             ArenaType.SIMPLE -> simpleArena.build(world, config, placer)
@@ -320,7 +322,7 @@ class ArenaManager(private val plugin: JavaPlugin) {
      * Private: delegate build to appropriate builder (sync)
      */
     private fun build(world: World, type: ArenaType) {
-        val config = ArenaConfig(storage.arenaBaseY, type)
+        val config = ArenaConfig(storage.arenaBaseY, type, targetBlockConfig)
         when (type) {
             ArenaType.SIMPLE -> simpleArena.build(world, config)
             ArenaType.DETAILED -> detailedArena.build(world, config)
