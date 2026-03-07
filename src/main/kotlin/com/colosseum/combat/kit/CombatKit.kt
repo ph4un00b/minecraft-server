@@ -1,4 +1,4 @@
-package com.colosseum.arena.combat
+package com.colosseum.combat.kit
 
 import org.bukkit.Material
 import org.bukkit.entity.Player

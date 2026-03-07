@@ -1,6 +1,6 @@
 @file:Suppress("DEPRECATION")
 
-package com.colosseum.arena.combat
+package com.colosseum.combat.arrow
 
 import org.bukkit.Bukkit
 import org.bukkit.Material

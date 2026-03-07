@@ -1,4 +1,4 @@
-package com.colosseum.arena.combat
+package com.colosseum.combat.kit
 
 import org.bukkit.enchantments.Enchantment
 
@@ -16,7 +16,7 @@ import org.bukkit.enchantments.Enchantment
  *
  * PaperMC Registry (1.21+):
  * - https://jd.papermc.io/paper/1.21/org/bukkit/enchantments/Enchantment.html
- * - Registry-based enchantments for modern versions
+ *   - Registry-based enchantments for modern versions
  */
 data class KitConfig(
     val bowEnchantments: Map<Enchantment, Int> =
