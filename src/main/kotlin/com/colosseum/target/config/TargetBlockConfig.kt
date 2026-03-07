@@ -24,4 +24,17 @@ data class TargetBlockConfig(
     // 2 seconds (20 ticks per second)
     val activationDuration: Long = 40L,
     val tickInterval: Long = 2L,
-)
+    // Target destroy/recreate settings
+    val destroyOnHit: Boolean = true,
+    val recreateDelaySeconds: Long = 5L,
+) {
+    companion object {
+        const val DEFAULT_DELAY_SECONDS = 5L
+    }
+
+    init {
+        require(recreateDelaySeconds >= 0) {
+            "Recreate delay must be non-negative"
+        }
+    }
+}

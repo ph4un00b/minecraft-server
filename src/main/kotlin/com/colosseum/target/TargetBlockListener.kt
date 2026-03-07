@@ -23,7 +23,7 @@ class TargetBlockListener(
         private const val YELLOW = "\u001B[33m"
         private const val RESET = "\u001B[0m"
         private const val GREEN = "\u001B[32m"
-        private const val DELAY_SECONDS = 5L
+        private const val TICKS_PER_SECOND = 20L
     }
 
     private var targetActivated = false
@@ -56,12 +56,15 @@ class TargetBlockListener(
      * Called when all NPCs in a batch are killed
      */
     fun recreateTargetAfterDelay() {
+        if (!config.destroyOnHit) return
+
         val world = lastSpawnWorld ?: return
         val baseY = lastSpawnBaseY
+        val delayTicks = config.recreateDelaySeconds * TICKS_PER_SECOND
 
         plugin.logger.info(
             "$YELLOW[ArenaPlugin] Recreating target block in " +
-                "$DELAY_SECONDS seconds...$RESET",
+                "${config.recreateDelaySeconds} seconds...$RESET",
         )
 
         object : BukkitRunnable() {
@@ -82,7 +85,7 @@ class TargetBlockListener(
                         "Hit it to spawn next batch.$RESET",
                 )
             }
-        }.runTaskLater(plugin, DELAY_SECONDS * 20L) // 20 ticks = 1 second
+        }.runTaskLater(plugin, delayTicks)
     }
 
     @EventHandler
@@ -119,8 +122,10 @@ class TargetBlockListener(
         // Play sound and effects
         playActivationEffects(hitBlock.location)
 
-        // Destroy the target block
-        hitBlock.type = Material.AIR
+        // Destroy the target block if configured
+        if (config.destroyOnHit) {
+            hitBlock.type = Material.AIR
+        }
 
         // Spawn NPCs for this batch
         npcManager.spawnArenaNPCs(world, lastSpawnBaseY, shooter)

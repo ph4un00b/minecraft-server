@@ -2,6 +2,7 @@ package com.colosseum.npc
 
 import com.colosseum.arena.domain.SpawnPosition
 import com.colosseum.combat.spawn.PlayerSpawner
+import com.colosseum.npc.config.BatchConfig
 import com.colosseum.target.TargetBlockListener
 import net.citizensnpcs.api.CitizensAPI
 import net.citizensnpcs.api.npc.NPC
@@ -25,12 +26,12 @@ import java.util.concurrent.ConcurrentHashMap
 class NPCManager(
     private val plugin: JavaPlugin,
     private val playerSpawner: PlayerSpawner,
+    private val batchConfig: BatchConfig = BatchConfig(),
 ) : Listener {
     companion object {
         private const val NPC_RADIUS = 6
         private const val DEFAULT_HEALTH = 1.0
         private const val DEFAULT_DAMAGE = 5.0
-        private const val MAX_NPCS = 4
         private const val NPC_NAME_PREFIX = "ArenaGladiator_"
         private const val YELLOW = "\u001B[33m"
         private const val RESET = "\u001B[0m"
@@ -41,13 +42,11 @@ class NPCManager(
         ConcurrentHashMap<Int, Pair<SpawnPosition, NPCAttackType>>()
     private var npcHealth = DEFAULT_HEALTH
     private var npcDamage = DEFAULT_DAMAGE
-    private var npcCount = 1
     private var npcEnabled = true
     private var npcAttackType = NPCAttackType.SWORD
-    private var currentBatchSize = 1
+    private var currentBatchSize = batchConfig.startingBatchSize
     private var lastSpawnWorld: World? = null
     private var lastSpawnBaseY: Int = 0
-    private var isHostile = false
     private var targetBlockListener: TargetBlockListener? = null
 
     init {
@@ -89,23 +88,22 @@ class NPCManager(
         }
 
         plugin.logger.info(
-            "$YELLOW[ArenaPlugin] Spawning $npcCount Sentinel NPCs " +
+            "$YELLOW[ArenaPlugin] Spawning $currentBatchSize Sentinel NPCs " +
                 "at baseY=$baseY$RESET",
         )
 
         lastSpawnWorld = world
         lastSpawnBaseY = baseY
-        currentBatchSize = npcCount
-        isHostile = true // NPCs spawn already hostile
 
-        val attackTypes = NPCDecisions.selectRandomTypesForBatch(npcCount)
+        val attackTypes =
+            NPCDecisions.selectRandomTypesForBatch(currentBatchSize)
 
         clearAllNPCs()
 
         val registry = CitizensAPI.getNPCRegistry()
 
         SpawnPosition.getAll().forEachIndexed { index, position ->
-            if (index < npcCount) {
+            if (index < currentBatchSize) {
                 val attackType = attackTypes[index]
                 val location = calculateNPCLocation(world, position, baseY)
                 val probPct = (attackType.probability * 100).toInt()
@@ -277,8 +275,10 @@ class NPCManager(
         sentinel.health = npcHealth
         sentinel.damage = npcDamage
 
-        // Add player as target immediately - NPCs spawn hostile
-        sentinel.addTarget("PLAYER:${targetPlayer.name}")
+        // Add player as target if configured to spawn hostile
+        if (batchConfig.spawnHostile) {
+            sentinel.addTarget("PLAYER:${targetPlayer.name}")
+        }
 
         // Set to melee combat
         sentinel.attackRate = 10
@@ -290,11 +290,6 @@ class NPCManager(
     }
 
     fun activateHostility(activatingPlayer: Player) {
-        if (isHostile) {
-            return
-        }
-
-        isHostile = true
         val registry = CitizensAPI.getNPCRegistry()
 
         trackedNPCs.keys.forEach { npcId ->
@@ -316,11 +311,7 @@ class NPCManager(
         )
     }
 
-    fun deactivateHostility() {
-        isHostile = false
-    }
-
-    fun isHostile(): Boolean = isHostile
+    fun isHostile(): Boolean = batchConfig.spawnHostile
 
     @EventHandler
     fun onEntityDeath(event: EntityDeathEvent) {
@@ -334,10 +325,8 @@ class NPCManager(
             trackedNPCs.remove(npc.id)
 
             if (trackedNPCs.isEmpty()) {
-                val nextBatchSize = NPCDecisions.nextBatchSize(currentBatchSize)
+                val nextBatchSize = batchConfig.nextBatchSize(currentBatchSize)
                 currentBatchSize = nextBatchSize
-                npcCount = currentBatchSize
-                isHostile = false // Reset hostility for new batch
                 plugin.logger.info(
                     "$YELLOW[ArenaPlugin] All NPCs dead. " +
                         "Next batch will be: $currentBatchSize NPCs$RESET",
@@ -367,8 +356,9 @@ class NPCManager(
 
     fun getNPCStatus(): String {
         val status = if (npcEnabled) "Enabled" else "Disabled"
-        return "NPCs: $status, Count: $npcCount, Health: $npcHealth, " +
-            "Damage: $npcDamage, Attack: $npcAttackType"
+        return "NPCs: $status, Count: $currentBatchSize, " +
+            "Health: $npcHealth, Damage: $npcDamage, " +
+            "Attack: $npcAttackType"
     }
 
     fun toggleNPCs() {
@@ -394,13 +384,13 @@ class NPCManager(
     }
 
     fun setNPCCount(count: Int) {
-        npcCount = count.coerceIn(0, MAX_NPCS)
+        currentBatchSize = count.coerceIn(0, batchConfig.maxBatchSize)
         plugin.logger.info(
-            "$YELLOW[ArenaPlugin] NPC count set to $npcCount$RESET",
+            "$YELLOW[ArenaPlugin] NPC count set to $currentBatchSize$RESET",
         )
     }
 
-    fun getNPCCount(): Int = npcCount
+    fun getNPCCount(): Int = currentBatchSize
 
     fun getNPCHealth(): Double = npcHealth
 

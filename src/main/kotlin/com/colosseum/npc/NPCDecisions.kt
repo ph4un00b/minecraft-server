@@ -3,10 +3,10 @@ package com.colosseum.npc
 import kotlin.random.Random
 
 object NPCDecisions {
-    private const val MAX_NPCS = 4
+    private const val DEFAULT_MAX_NPCS = 4
 
-    fun nextBatchSize(currentSize: Int): Int {
-        return (currentSize + 1).coerceAtMost(MAX_NPCS)
+    fun nextBatchSize(currentSize: Int, maxSize: Int = DEFAULT_MAX_NPCS): Int {
+        return (currentSize + 1).coerceAtMost(maxSize)
     }
 
     fun selectRandomType(): NPCAttackType {
