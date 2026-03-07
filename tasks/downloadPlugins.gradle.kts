@@ -50,16 +50,70 @@ tasks.register("downloadPlugins") {
     }
 }
 
-fun downloadFile(urlString: String, destination: java.io.File) {
+fun downloadFile(urlString: String, destination: java.io.File, maxRetries: Int = 3) {
     val uri = URI(urlString)
-    val connection = uri.toURL().openConnection()
-    connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Gradle)")
+    var lastException: Exception? = null
     
-    connection.inputStream.use { inputStream ->
-        Channels.newChannel(inputStream).use { readableByteChannel ->
-            destination.outputStream().use { outputStream ->
-                outputStream.channel.transferFrom(readableByteChannel, 0, Long.MAX_VALUE)
+    repeat(maxRetries) { attempt ->
+        try {
+            if (attempt > 0) {
+                val delay = attempt * 5L
+                println("[INFO] Retrying in ${delay}s...")
+                Thread.sleep(delay * 1000)
+            }
+            
+            println("[INFO] Download attempt ${attempt + 1}/$maxRetries...")
+            
+            val connection = uri.toURL().openConnection().apply {
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Gradle)")
+                connectTimeout = 10000   // 10 seconds to establish connection
+                readTimeout = 30000      // 30 seconds for read operations
+            }
+            
+            // Use buffered streaming with timeout-aware reading
+            connection.inputStream.buffered().use { input ->
+                destination.outputStream().buffered().use { output ->
+                    val buffer = ByteArray(8192) // 8KB buffer
+                    var bytesRead: Int
+                    var totalRead = 0L
+                    var lastProgressTime = System.currentTimeMillis()
+                    
+                    while (true) {
+                        bytesRead = input.read(buffer)
+                        if (bytesRead == -1) break
+                        
+                        output.write(buffer, 0, bytesRead)
+                        totalRead += bytesRead
+                        
+                        val now = System.currentTimeMillis()
+                        if (now - lastProgressTime > 10000) { // Log every 10 seconds
+                            println("[INFO] Downloaded ${formatBytes(totalRead)}...")
+                            lastProgressTime = now
+                        }
+                    }
+                    
+                    println("[INFO] Download completed: ${formatBytes(totalRead)}")
+                }
+            }
+            
+            return  // Success, exit function
+            
+        } catch (e: Exception) {
+            lastException = e
+            println("[WARN] Attempt ${attempt + 1}/$maxRetries failed: ${e.message}")
+            if (destination.exists() && destination.length() == 0L) {
+                destination.delete()  // Clean up empty file
             }
         }
+    }
+    
+    throw lastException ?: RuntimeException("Download failed after $maxRetries attempts")
+}
+
+fun formatBytes(bytes: Long): String {
+    return when {
+        bytes >= 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
+        bytes >= 1024 -> "${bytes / 1024} KB"
+        else -> "$bytes bytes"
     }
 }
