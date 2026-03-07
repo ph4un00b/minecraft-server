@@ -1,5 +1,7 @@
-package com.colosseum.arena.commands
+package com.colosseum.commands.handler
 
+import com.colosseum.commands.infrastructure.ArenaCommand
+import com.colosseum.commands.infrastructure.CommandLogger
 import com.colosseum.npc.NPCAttackType
 import com.colosseum.npc.NPCManager
 import org.bukkit.command.CommandSender

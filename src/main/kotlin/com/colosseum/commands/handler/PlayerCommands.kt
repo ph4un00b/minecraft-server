@@ -1,6 +1,8 @@
-package com.colosseum.arena.commands
+package com.colosseum.commands.handler
 
 import com.colosseum.arena.ArenaManager
+import com.colosseum.commands.infrastructure.ArenaCommand
+import com.colosseum.commands.infrastructure.CommandLogger
 import org.bukkit.Bukkit
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player

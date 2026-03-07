@@ -1,5 +1,6 @@
 package com.colosseum.arena.commands
 
+import com.colosseum.commands.infrastructure.CommandDisplay
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail

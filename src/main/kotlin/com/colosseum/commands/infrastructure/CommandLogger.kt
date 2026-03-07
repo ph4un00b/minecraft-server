@@ -1,4 +1,4 @@
-package com.colosseum.arena.commands
+package com.colosseum.commands.infrastructure
 
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player

@@ -1,4 +1,4 @@
-package com.colosseum.arena.commands
+package com.colosseum.commands.infrastructure
 
 import java.util.logging.Logger
 

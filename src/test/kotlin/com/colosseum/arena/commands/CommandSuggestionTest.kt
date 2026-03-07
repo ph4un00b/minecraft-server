@@ -1,5 +1,6 @@
 package com.colosseum.arena.commands
 
+import com.colosseum.commands.infrastructure.CommandSuggestion
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue

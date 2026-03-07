@@ -1,4 +1,4 @@
-package com.colosseum.arena.commands
+package com.colosseum.commands.infrastructure
 
 /**
  * Utility class for command suggestions using Levenshtein distance algorithm

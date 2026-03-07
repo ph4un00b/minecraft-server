@@ -1,13 +1,13 @@
 package com.colosseum.arena
 
-import com.colosseum.arena.commands.ArenaCommand
-import com.colosseum.arena.commands.BuildCommands
-import com.colosseum.arena.commands.CommandDisplay
-import com.colosseum.arena.commands.CommandLogger
-import com.colosseum.arena.commands.CommandSuggestion
-import com.colosseum.arena.commands.InfoCommands
-import com.colosseum.arena.commands.NPCCommands
-import com.colosseum.arena.commands.PlayerCommands
+import com.colosseum.commands.handler.BuildCommands
+import com.colosseum.commands.handler.InfoCommands
+import com.colosseum.commands.handler.NPCCommands
+import com.colosseum.commands.handler.PlayerCommands
+import com.colosseum.commands.infrastructure.ArenaCommand
+import com.colosseum.commands.infrastructure.CommandDisplay
+import com.colosseum.commands.infrastructure.CommandLogger
+import com.colosseum.commands.infrastructure.CommandSuggestion
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
