@@ -257,6 +257,12 @@ class NPCManager(
                         ItemStack(Material.TRIDENT),
                     )
                 }
+                NPCAttackType.FIREBALL -> {
+                    equipment.set(
+                        Equipment.EquipmentSlot.HAND,
+                        ItemStack(Material.BLAZE_ROD),
+                    )
+                }
             }
         } catch (e: Exception) {
             plugin.logger.warning(
