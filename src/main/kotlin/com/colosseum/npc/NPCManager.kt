@@ -2,6 +2,7 @@ package com.colosseum.npc
 
 import com.colosseum.arena.domain.SpawnPosition
 import com.colosseum.combat.spawn.PlayerSpawner
+import com.colosseum.core.ArenaMessage
 import com.colosseum.npc.config.BatchConfig
 import com.colosseum.target.TargetBlockListener
 import net.citizensnpcs.api.CitizensAPI
@@ -44,6 +45,7 @@ class NPCManager(
     private var npcEnabled = NPCConfig.DEFAULT_ENABLED
     private var npcAttackType = NPCAttackType.SWORD
     private var currentBatchSize = batchConfig.startingBatchSize
+    private var batchIndex = 1
     private var lastSpawnWorld: World? = null
     private var lastSpawnBaseY: Int = 0
     private var targetBlockListener: TargetBlockListener? = null
@@ -330,8 +332,10 @@ class NPCManager(
             trackedNPCs.remove(npc.id)
 
             if (trackedNPCs.isEmpty()) {
+                val clearedBatch = batchIndex
                 val nextBatchSize = batchConfig.nextBatchSize(currentBatchSize)
                 currentBatchSize = nextBatchSize
+                batchIndex++
                 plugin.logger.info(
                     "$YELLOW[ArenaPlugin] All NPCs dead. " +
                         "Next batch will be: $currentBatchSize NPCs$RESET",
@@ -343,6 +347,11 @@ class NPCManager(
                     1.0f,
                     1.0f,
                 )
+                // Show title to all players in the world
+                ArenaMessage.BatchCleared(
+                    batchNumber = clearedBatch,
+                    nextBatchSize = currentBatchSize,
+                ).broadcast(entity.world)
                 // Recreate target block after delay so player can spawn next batch
                 targetBlockListener?.recreateTargetAfterDelay()
             }
@@ -364,6 +373,25 @@ class NPCManager(
 
         trackedNPCs.clear()
         plugin.logger.info("$YELLOW[ArenaPlugin] All NPCs cleared$RESET")
+    }
+
+    fun resetBatchIndex() {
+        batchIndex = 1
+        plugin.logger.info("$YELLOW[ArenaPlugin] Batch index reset to 1$RESET")
+    }
+
+    /**
+     * Full reset of NPC manager state for arena rebuilds
+     * Clears NPCs, resets batch progress, and clears spawn tracking
+     */
+    fun reset() {
+        clearAllNPCs()
+        resetBatchIndex()
+        currentBatchSize = batchConfig.startingBatchSize
+        lastSpawnWorld = null
+        lastSpawnBaseY = 0
+        targetBlockListener?.reset()
+        plugin.logger.info("$YELLOW[ArenaPlugin] NPC Manager fully reset$RESET")
     }
 
     fun getNPCStatus(): String {
@@ -398,12 +426,15 @@ class NPCManager(
     fun setNPCCount(count: Int) {
         currentBatchSize =
             count.coerceIn(NPCConfig.MIN_COUNT, NPCConfig.MAX_COUNT)
+        batchIndex = 1
         plugin.logger.info(
             "$YELLOW[ArenaPlugin] NPC count set to $currentBatchSize$RESET",
         )
     }
 
     fun getNPCCount(): Int = currentBatchSize
+
+    fun getBatchIndex(): Int = batchIndex
 
     fun getNPCHealth(): Double = npcHealth
 

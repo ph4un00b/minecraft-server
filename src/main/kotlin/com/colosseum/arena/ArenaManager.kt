@@ -136,8 +136,8 @@ class ArenaManager(private val plugin: JavaPlugin) {
         // Clear all persistent arrows
         arrowTracker.clearAllArrows()
 
-        // Clear NPCs
-        npcManager.clearAllNPCs()
+        // Full NPC reset for fresh arena
+        npcManager.reset()
 
         // Build new
         build(world, type)
@@ -184,8 +184,8 @@ class ArenaManager(private val plugin: JavaPlugin) {
         // Clear all persistent arrows
         arrowTracker.clearAllArrows()
 
-        // Clear NPCs
-        npcManager.clearAllNPCs()
+        // Full NPC reset for fresh arena
+        npcManager.reset()
 
         // Queue all blocks for placement
         val placer = QueuedBlockPlacer()

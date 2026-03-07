@@ -26,8 +26,8 @@ class YLevelChanger(
         // Clear the area
         clearer.clear(world)
 
-        // Clear NPCs
-        npcManager.clearAllNPCs()
+        // Full NPC reset for fresh arena
+        npcManager.reset()
 
         // Trigger rebuild
         rebuild()

@@ -1,5 +1,6 @@
 package com.colosseum.target
 
+import com.colosseum.core.ArenaMessage
 import com.colosseum.npc.NPCManager
 import com.colosseum.target.config.TargetBlockConfig
 import org.bukkit.Bukkit
@@ -118,6 +119,9 @@ class TargetBlockListener(
             "$GREEN[ArenaPlugin] Target hit by ${shooter.name}! " +
                 "${config.activationMessage}$RESET",
         )
+
+        // Broadcast action bar to all players in the world
+        ArenaMessage.TargetActivated().broadcast(world)
 
         // Play sound and effects
         playActivationEffects(hitBlock.location)
