@@ -9,11 +9,11 @@ import com.colosseum.arena.config.TargetBlockConfig
 import com.colosseum.arena.domain.ArenaConfig
 import com.colosseum.arena.domain.ArenaType
 import com.colosseum.arena.operations.ArenaClearer
-import com.colosseum.arena.operations.PlayerSpawner
 import com.colosseum.arena.operations.YLevelChanger
 import com.colosseum.combat.arrow.ArrowTracker
 import com.colosseum.combat.kit.CombatKit
 import com.colosseum.combat.kit.KitConfig
+import com.colosseum.combat.spawn.PlayerSpawner
 import com.colosseum.core.storage.PropertiesStorage
 import org.bukkit.Location
 import org.bukkit.NamespacedKey

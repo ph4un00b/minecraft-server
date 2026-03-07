@@ -1,4 +1,4 @@
-package com.colosseum.arena.operations
+package com.colosseum.combat.spawn
 
 import com.colosseum.arena.domain.SpawnPoint
 import com.colosseum.arena.domain.SpawnPosition

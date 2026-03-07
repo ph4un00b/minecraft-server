@@ -1,7 +1,7 @@
 package com.colosseum.arena
 
 import com.colosseum.arena.domain.SpawnPosition
-import com.colosseum.arena.operations.PlayerSpawner
+import com.colosseum.combat.spawn.PlayerSpawner
 import com.colosseum.npc.NPCAttackType
 import com.colosseum.npc.NPCDecisions
 import net.citizensnpcs.api.CitizensAPI
